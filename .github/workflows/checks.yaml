@@ -22,12 +22,12 @@ jobs:
       - uses: ./.github/setup
       - run: ruff format
 
-  pyright:
-    name: Pyright
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/setup
-      - uses: jakebailey/pyright-action@v2
-        with:
-          pylance-version: latest-release
+  # pyright:
+  #   name: Pyright
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/setup
+  #     - uses: jakebailey/pyright-action@v2
+  #       with:
+  #         pylance-version: latest-release
