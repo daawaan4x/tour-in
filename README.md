@@ -4,7 +4,7 @@ App for finding the shortest path to tour places around Ilocos Norte — made wi
 
 ## Features
 
-- Select multiple Point of Interests to visit
+- Select multiple Points of Interest (POIs) to visit
 - Start path from any starting location
 
 ## Table of Contents
@@ -38,5 +38,16 @@ source .venv/Scripts/activate # bash/zsh
 
 pip install -r requirements.txt
 ```
+
+### Graph Preparation
+
+Before the app can run search algorithms, a routable graph representation of the original _OpenStreetMap_ data has to be generated first.
+
+- Generate the routable graph from the _OpenStreetMap_ extract:
+  - `python -m tourin.graph.build_graph`
+- (Optional) Export the graph back to _GeoJSON_ for validation:
+  - `python -m tourin.graph.build_graph_geojson`
+
+The graph JSON stores `networkx` node-link data with untouched `lon`/`lat` intersections and edge coordinate chains so it can be reconstructed losslessly.
 
 ## Algorithm

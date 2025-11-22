@@ -3,3 +3,4 @@ __pycache__
 bin/*/
 *.txt
 !requirements.txt
+assets/ilocos_norte_graph**
