@@ -5,11 +5,13 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Dict, Iterable, Sequence
+from typing import TYPE_CHECKING, Iterable, Sequence
 
-import networkx as nx
 import orjson
 from networkx.readwrite import json_graph
+
+if TYPE_CHECKING:
+    import networkx as nx
 
 # region Configuration & constants
 
@@ -23,7 +25,7 @@ DEFAULT_OUTPUT = Path("assets/ilocos_norte_graph_roads.geojson")
 # region Conversion helpers
 
 
-def graph_to_geojson(graph: nx.Graph) -> Dict:
+def graph_to_geojson(graph: nx.MultiGraph) -> dict:
     """Convert the routable graph into a GeoJSON FeatureCollection."""
     features = []
 
@@ -40,28 +42,37 @@ def graph_to_geojson(graph: nx.Graph) -> Dict:
                 "type": "Feature",
                 "geometry": {"type": "Point", "coordinates": [lon, lat]},
                 "properties": node_props,
-            }
+            },
         )
 
     # Edges become LineStrings; fall back to simple endpoints if needed.
-    for u, v, attrs in graph.edges(data=True):
+    if graph.is_multigraph():
+        edge_iter = graph.edges(keys=True, data=True)
+    else:
+        edge_iter = ((u, v, 0, data) for u, v, data in graph.edges(data=True))
+
+    for u, v, key, attrs in edge_iter:
         coords = attrs.get("coordinates") or _coords_from_nodes(graph, u, v)
-        edge_props = {"u": u, "v": v}
+        edge_props = {"u": u, "v": v, "edge_key": key}
         edge_props.update(
-            {k: value for k, value in attrs.items() if k != "coordinates"}
+            {k: value for k, value in attrs.items() if k != "coordinates"},
         )
         features.append(
             {
                 "type": "Feature",
                 "geometry": {"type": "LineString", "coordinates": coords},
                 "properties": edge_props,
-            }
+            },
         )
 
     return {"type": "FeatureCollection", "features": features}
 
 
-def _coords_from_nodes(graph: nx.Graph, u: int, v: int) -> Iterable[Iterable[float]]:
+def _coords_from_nodes(
+    graph: nx.MultiGraph,
+    u: int,
+    v: int,
+) -> Iterable[Iterable[float]]:
     """Fallback line geometry using only the endpoint coordinates."""
     u_data = graph.nodes[u]
     v_data = graph.nodes[v]
@@ -77,18 +88,20 @@ def _coords_from_nodes(graph: nx.Graph, u: int, v: int) -> Iterable[Iterable[flo
 # region I/O helpers
 
 
-def load_graph(graph_path: Path) -> nx.Graph:
+def load_graph(graph_path: Path) -> nx.MultiGraph:
     """Load a node-link JSON graph from disk."""
     data = orjson.loads(graph_path.read_bytes())
-    return json_graph.node_link_graph(data)
+    return json_graph.node_link_graph(data, edges="edges")
 
 
-def write_geojson(data: Dict, output_path: Path) -> None:
+def write_geojson(data: dict, output_path: Path) -> None:
     """Write the GeoJSON FeatureCollection to disk."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(orjson.dumps(data, option=orjson.OPT_INDENT_2))
     LOGGER.info(
-        "Exported GeoJSON to %s (%d bytes)", output_path, output_path.stat().st_size
+        "Exported GeoJSON to %s (%d bytes)",
+        output_path,
+        output_path.stat().st_size,
     )
 
 
@@ -108,7 +121,7 @@ def export_cli(args: argparse.Namespace) -> None:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse CLI arguments for the GeoJSON exporter."""
     parser = argparse.ArgumentParser(
-        description="Convert a routable graph JSON into GeoJSON for QA."
+        description="Convert a routable graph JSON into GeoJSON for QA.",
     )
     parser.add_argument(
         "--graph-json",
@@ -126,7 +139,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _configure_logging():
+def _configure_logging() -> None:
     """Configure default logging for CLI usage."""
     logging.basicConfig(
         level=logging.INFO,
