@@ -16,9 +16,6 @@ if TYPE_CHECKING:
 
 Coordinate = tuple[float, float]  # (lon, lat)
 
-# Allow slight float drift when comparing lon/lat pairs.
-GEOMETRY_TOLERANCE = 1e-9
-
 
 @dataclass(slots=True)
 class UCSResult:
@@ -211,15 +208,17 @@ def _edge_geometry_coords(
     if candidate is None:
         return [start, end]
 
-    geometry = candidate.get("geometry")
-    if geometry is None or not hasattr(geometry, "coords"):
-        return [start, end]
-
-    coords = list(geometry.coords)
+    coords = _extract_geometry_coords(candidate.get("geometry"))
     if not coords:
         return [start, end]
 
-    return _orient_coords(coords, start, end)
+    # Ensure polyline runs from node `u` to node `v` and touches their exact coordinates.
+    if _squared_distance(coords[0], start) > _squared_distance(coords[-1], start):
+        coords = list(reversed(coords))
+
+    coords[0] = start
+    coords[-1] = end
+    return coords
 
 
 def _preferred_edge_attrs(
@@ -237,29 +236,24 @@ def _preferred_edge_attrs(
     )
 
 
-def _orient_coords(
-    coords: list[Coordinate],
-    start: Coordinate,
-    end: Coordinate,
-) -> list[Coordinate]:
-    """Ensure polyline coordinates start near `start` and end near `end`."""
-    forward_score = _coord_distance(coords[0], start) + _coord_distance(coords[-1], end)
-    reverse = list(reversed(coords))
-    reverse_score = _coord_distance(reverse[0], start) + _coord_distance(
-        reverse[-1],
-        end,
-    )
-    oriented = coords if forward_score <= reverse_score else reverse
-
-    if _coord_distance(oriented[0], start) > GEOMETRY_TOLERANCE:
-        oriented = [start, *oriented]
-    if _coord_distance(oriented[-1], end) > GEOMETRY_TOLERANCE:
-        oriented = [*oriented, end]
-
-    return oriented
+def _extract_geometry_coords(geometry: object) -> list[Coordinate] | None:
+    """Return a mutable list of coordinates for the provided geometry."""
+    if geometry is None:
+        return None
+    if hasattr(geometry, "coords"):
+        return list(geometry.coords)  # type: ignore[return-value]
+    if hasattr(geometry, "geoms"):
+        coords: list[Coordinate] = []
+        for geom in geometry.geoms:  # type: ignore[attr-defined]
+            if hasattr(geom, "coords"):
+                coords.extend(list(geom.coords))  # type: ignore[arg-type]
+        return coords or None
+    if isinstance(geometry, (list, tuple)):
+        return list(geometry)
+    return None
 
 
-def _coord_distance(a: Coordinate, b: Coordinate) -> float:
+def _squared_distance(a: Coordinate, b: Coordinate) -> float:
     """Return squared Euclidean distance between two lon/lat points."""
     dx = a[0] - b[0]
     dy = a[1] - b[1]
