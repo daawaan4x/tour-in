@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from itertools import pairwise
 from heapq import heappop, heappush
+from itertools import pairwise
 from typing import TYPE_CHECKING, Hashable, Iterable, Sequence
 
-import osmnx as ox
-
 from .geo import great_circle_meters
-from .snap import snap_coords
+from .logger import Logger
+from .snap import SNAP_MAX_DISTANCE_M, snap_coords
 
 if TYPE_CHECKING:
     import networkx as nx
@@ -34,6 +33,7 @@ def plan(
     graph: nx.MultiGraph,
     start: Coordinate,
     destinations: Sequence[Coordinate],
+    logger: Logger = Logger(),  # noqa: B008
 ) -> list[Coordinate]:
     """Generate a LineString route that visits all destinations.
 
@@ -45,6 +45,8 @@ def plan(
         Starting `(lon, lat)` coordinate.
     destinations:
         Sequence of `(lon, lat)` destination coordinates to visit.
+    logger:
+        Logger controlling status/timing output. Defaults to a silent logger.
 
     Returns
     -------
@@ -62,7 +64,17 @@ def plan(
         msg = "At least one destination coordinate is required."
         raise ValueError(msg)
 
-    snapped_points = snap_coords(graph, [start, *destinations])
+    snap_phase = logger.phase(
+        "snap.coords",
+        coords=len(destinations) + 1,
+        max_distance_m=SNAP_MAX_DISTANCE_M,
+    )
+    with snap_phase:
+        snapped_points = snap_coords(
+            graph,
+            [start, *destinations],
+            max_distance_m=SNAP_MAX_DISTANCE_M,
+        )
     start_node = snapped_points[0].node_id
     pending_targets = {snap.node_id for snap in snapped_points[1:]}
 
@@ -70,17 +82,49 @@ def plan(
     full_path: list[Hashable] = [start_node]
     current_node = start_node
 
-    while pending_targets:
-        result = _ucs(graph, current_node, pending_targets)
-        if result is None:
-            msg = "No route found for remaining destinations."
-            raise RuntimeError(msg)
-        _, path = result.target, result.path
-        full_path.extend(path[1:])  # avoid duplicating junction node
-        pending_targets.remove(result.target)
-        current_node = result.target
+    logger.info(
+        "search.initialized",
+        requested=len(destinations),
+        unique_pending=len(pending_targets),
+    )
 
-    return _path_coordinates(graph, full_path)
+    search_phase = logger.phase(
+        "search.run",
+        legs=len(destinations),
+    )
+
+    with search_phase:
+        while pending_targets:
+            logger.info(
+                "search.leg.start",
+                origin=current_node,
+                remaining=len(pending_targets),
+            )
+            result = _ucs(graph, current_node, pending_targets)
+            if result is None:
+                msg = "No route found for remaining destinations."
+                raise RuntimeError(msg)
+            _, path = result.target, result.path
+            full_path.extend(path[1:])  # avoid duplicating junction node
+            pending_targets.remove(result.target)
+            current_node = result.target
+            logger.info(
+                "search.leg.complete",
+                reached=result.target,
+                leg_cost=f"{result.cost:.1f}",
+                remaining=len(pending_targets),
+            )
+
+    stitch_phase = logger.phase(
+        "stitch.path",
+        nodes=len(full_path),
+    )
+    with stitch_phase:
+        path_coords = _path_coordinates(graph, full_path)
+
+    logger.info("route.ready", coordinates=len(path_coords))
+
+    return path_coords
 
 
 def _ucs(
@@ -143,7 +187,7 @@ def _path_coordinates(
         return []
 
     stitched: list[Coordinate] = [
-        (graph.nodes[nodes[0]]["x"], graph.nodes[nodes[0]]["y"])
+        (graph.nodes[nodes[0]]["x"], graph.nodes[nodes[0]]["y"]),
     ]
 
     for u, v in pairwise(nodes):
@@ -175,8 +219,7 @@ def _edge_geometry_coords(
     if not coords:
         return [start, end]
 
-    oriented = _orient_coords(coords, start, end)
-    return oriented
+    return _orient_coords(coords, start, end)
 
 
 def _preferred_edge_attrs(
@@ -203,7 +246,8 @@ def _orient_coords(
     forward_score = _coord_distance(coords[0], start) + _coord_distance(coords[-1], end)
     reverse = list(reversed(coords))
     reverse_score = _coord_distance(reverse[0], start) + _coord_distance(
-        reverse[-1], end
+        reverse[-1],
+        end,
     )
     oriented = coords if forward_score <= reverse_score else reverse
 
