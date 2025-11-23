@@ -44,9 +44,9 @@ pip install -r requirements.txt
 Before the app can run search algorithms, a routable graph representation of the original _OpenStreetMap_ data has to be generated first.
 
 - Generate the routable graph from the _OpenStreetMap_ extract:
-  - `python -m tourin.graph.build_graph`
+  - `python -m scripts.build_graph`
 - (Optional) Export the graph back to _GeoJSON_ for validation:
-  - `python -m tourin.graph.build_graph_geojson`
+  - `python -m scripts.build_graph_geojson`
 
 The graph JSON stores `networkx` node-link data with untouched `lon`/`lat` intersections and edge coordinate chains so it can be reconstructed losslessly.
 

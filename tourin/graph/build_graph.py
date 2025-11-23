@@ -2,46 +2,42 @@
 
 from __future__ import annotations
 
-import argparse
 import collections.abc as cabc
 import logging
 import math
 from collections import defaultdict
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import geopandas as gpd
 import networkx as nx
-import orjson
 from networkx.readwrite import json_graph
 from pyproj import Geod
 from shapely.errors import TopologicalError
 from shapely.geometry import LineString, Point
 from shapely.ops import substring
 
-# region Configuration & type aliases
+if TYPE_CHECKING:
+    import geopandas as gpd
+
+# region Types & Configuration
 
 Coordinate = tuple[float, float]
 Breakpoints = dict[int, set[Coordinate]]
 
-# Default CLI parameters for road extraction.
 LOGGER = logging.getLogger(__name__)
-DEFAULT_GEOJSON = Path("assets/ilocos_norte_osm_roads.geojson")
-DEFAULT_GRAPH = Path("assets/ilocos_norte_graph_roads.json")
 DEFAULT_MIN_SEGMENT_METERS = 0.0
 
-# endregion Configuration & type aliases
+# endregion Types & Configuration
 
 
-# region Public API
+# region API
 
 
-def build_road_graph(
-    geojson_path: Path,
+def build_graph(
+    roads: gpd.GeoDataFrame,
     precision: int | None = None,
     min_segment_meters: float = DEFAULT_MIN_SEGMENT_METERS,
 ) -> nx.MultiGraph:
-    """Return a weighted graph matching the provided road GeoJSON."""
-    roads = _load_roads(geojson_path)
+    """Return a weighted graph built from the provided road geometries."""
     geoms = roads.geometry.reset_index(drop=True)
     graph = nx.MultiGraph()
     geod = Geod(ellps="WGS84")
@@ -78,43 +74,35 @@ def build_road_graph(
             graph.add_edge(u, v, **edge_attr)
 
     LOGGER.info(
-        "Graph built from %s with %s nodes / %s edges",
-        geojson_path,
+        "Graph built with %s nodes / %s edges",
         graph.number_of_nodes(),
         graph.number_of_edges(),
     )
     return graph
 
 
-def serialize_graph(graph: nx.MultiGraph, output_path: Path) -> None:
-    """Write the graph as node-link JSON for downstream tooling."""
-    data = json_graph.node_link_data(graph, edges="edges")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(orjson.dumps(data, option=orjson.OPT_INDENT_2))
-    LOGGER.info(
-        "Serialized graph to %s (%d bytes)",
-        output_path,
-        output_path.stat().st_size,
-    )
+def serialize_graph(graph: nx.MultiGraph) -> dict:
+    """Convert a graph into a node-link mapping in JSON."""
+    return json_graph.node_link_data(graph, edges="edges")
 
 
-# endregion Public API
+# endregion API
 
 
-# region Data loading helpers
+# region Data preparation helpers
 
 
-def _load_roads(geojson_path: Path) -> gpd.GeoDataFrame:
-    """Load road geometries and normalize them for processing."""
-    roads = gpd.read_file(geojson_path)
-    roads = roads[roads.geometry.notna()]
-    roads = roads[roads.geom_type.isin(["LineString", "MultiLineString"])]
-    if roads.empty:
-        raise ValueError(f"No (Multi)LineString geometries found in {geojson_path}")
-    roads = roads.explode(index_parts=False, ignore_index=True)
-    roads = roads[~roads.is_empty]
-    roads = _filter_positive_lengths(roads)
-    return roads.reset_index(drop=True)
+def prepare_roads(roads: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Normalize raw road geometries so they are ready for graph construction."""
+    cleaned = roads.copy()
+    cleaned = cleaned[cleaned.geometry.notna()]
+    cleaned = cleaned[cleaned.geom_type.isin(["LineString", "MultiLineString"])]
+    if cleaned.empty:
+        raise ValueError("No (Multi)LineString geometries found in provided roads.")
+    cleaned = cleaned.explode(index_parts=False, ignore_index=True)
+    cleaned = cleaned[~cleaned.is_empty]
+    cleaned = _filter_positive_lengths(cleaned)
+    return cleaned.reset_index(drop=True)
 
 
 def _filter_positive_lengths(roads: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -156,7 +144,7 @@ def _utm_crs_for_bounds(roads: gpd.GeoDataFrame) -> str | None:
     return f"EPSG:{hemisphere}{zone:02d}"
 
 
-# endregion Data loading helpers
+# endregion Data preparation helpers
 
 
 # region Geometry to graph conversion
@@ -320,69 +308,3 @@ def _clean_value(value):  # noqa: ANN001, ANN202
 
 
 # endregion Utility helpers
-
-
-# region CLI
-
-
-def serialize_cli(args: argparse.Namespace) -> None:
-    """Entry point for CLI invocations of the graph builder."""
-    graph = build_road_graph(
-        args.geojson,
-        precision=args.precision,
-        min_segment_meters=args.min_segment_meters,
-    )
-    serialize_graph(graph, args.output)
-
-
-def parse_args(argv: cabc.Sequence[str] | None = None) -> argparse.Namespace:
-    """Define CLI arguments for graph generation."""
-    parser = argparse.ArgumentParser(
-        description="Convert Ilocos Norte roads into a routable graph.",
-    )
-    parser.add_argument(
-        "--geojson",
-        type=Path,
-        default=DEFAULT_GEOJSON,
-        help="Path to the road GeoJSON file.",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=DEFAULT_GRAPH,
-        help="Destination path for the serialized graph (.json).",
-    )
-    parser.add_argument(
-        "--precision",
-        type=int,
-        default=None,
-        help="Decimal places to snap node coordinates (default: preserve raw precision).",  # noqa: E501
-    )
-    parser.add_argument(
-        "--min-segment-meters",
-        type=float,
-        default=DEFAULT_MIN_SEGMENT_METERS,
-        help="Drop road segments shorter than this many meters (default: 0 to keep all).",  # noqa: E501
-    )
-    parser.set_defaults(func=serialize_cli)
-    return parser.parse_args(argv)
-
-
-def _configure_logging() -> None:
-    """Configure a simple logging formatter for CLI runs."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
-    )
-
-
-def main(argv: cabc.Sequence[str] | None = None) -> None:
-    _configure_logging()
-    args = parse_args(argv)
-    args.func(args)
-
-
-if __name__ == "__main__":
-    main()
-
-# endregion CLI
