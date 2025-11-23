@@ -1,0 +1,222 @@
+"""Uniform Cost Search (UCS) planner for visiting multiple destinations."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from itertools import pairwise
+from heapq import heappop, heappush
+from typing import TYPE_CHECKING, Hashable, Iterable, Sequence
+
+import osmnx as ox
+
+from .geo import great_circle_meters
+from .snap import snap_coords
+
+if TYPE_CHECKING:
+    import networkx as nx
+
+Coordinate = tuple[float, float]  # (lon, lat)
+
+# Allow slight float drift when comparing lon/lat pairs.
+GEOMETRY_TOLERANCE = 1e-9
+
+
+@dataclass(slots=True)
+class UCSResult:
+    """Container for a UCS leg result."""
+
+    target: Hashable
+    path: list[Hashable]
+    cost: float
+
+
+def plan(
+    graph: nx.MultiGraph,
+    start: Coordinate,
+    destinations: Sequence[Coordinate],
+) -> list[Coordinate]:
+    """Generate a LineString route that visits all destinations.
+
+    Parameters
+    ----------
+    graph:
+        Undirected OSMnx graph (output of `setup_graph`).
+    start:
+        Starting `(lon, lat)` coordinate.
+    destinations:
+        Sequence of `(lon, lat)` destination coordinates to visit.
+
+    Returns
+    -------
+    list[Coordinate]
+        LineString containing the stitched path coordinates
+        (lon, lat order).
+
+    Notes
+    -----
+    This function calculates the shortest route to visit all destinations by
+    rerunning UCS from the current node after each visited destination.
+
+    """
+    if not destinations:
+        msg = "At least one destination coordinate is required."
+        raise ValueError(msg)
+
+    snapped_points = snap_coords(graph, [start, *destinations])
+    start_node = snapped_points[0].node_id
+    pending_targets = {snap.node_id for snap in snapped_points[1:]}
+
+    # Track the accumulated node path; reuse junction nodes only once.
+    full_path: list[Hashable] = [start_node]
+    current_node = start_node
+
+    while pending_targets:
+        result = _ucs(graph, current_node, pending_targets)
+        if result is None:
+            msg = "No route found for remaining destinations."
+            raise RuntimeError(msg)
+        _, path = result.target, result.path
+        full_path.extend(path[1:])  # avoid duplicating junction node
+        pending_targets.remove(result.target)
+        current_node = result.target
+
+    return _path_coordinates(graph, full_path)
+
+
+def _ucs(
+    graph: nx.MultiGraph,
+    source: Hashable,
+    targets: Iterable[Hashable],
+) -> UCSResult | None:
+    """Run UCS until the closest target node is reached."""
+    target_set = set(targets)
+    frontier: list[tuple[float, Hashable, list[Hashable]]] = [
+        (0.0, source, [source]),
+    ]
+    # best_cost caches the cheapest known cost to each node to avoid rework.
+    best_cost = {source: 0.0}
+
+    while frontier:
+        cost, node, path = heappop(frontier)
+        if node in target_set:
+            return UCSResult(target=node, path=path, cost=cost)
+
+        if cost > best_cost.get(node, float("inf")):
+            continue
+
+        for neighbor in graph.neighbors(node):
+            step_cost = _edge_travel_cost(graph, node, neighbor)
+            new_cost = cost + step_cost
+            if new_cost < best_cost.get(neighbor, float("inf")):
+                best_cost[neighbor] = new_cost
+                heappush(frontier, (new_cost, neighbor, [*path, neighbor]))
+
+    return None
+
+
+def _edge_travel_cost(
+    graph: nx.MultiGraph,
+    u: Hashable,
+    v: Hashable,
+) -> float:
+    """Return the travel cost between two adjacent nodes."""
+    candidate = _preferred_edge_attrs(graph, u, v)
+    if candidate is None:
+        return float("inf")
+
+    length = candidate.get("length")
+    if length is not None:
+        return float(length)
+
+    # When the edge lacks a precomputed length, approximate using coordinates.
+    u_geo = graph.nodes[u]
+    v_geo = graph.nodes[v]
+    return great_circle_meters(u_geo["y"], u_geo["x"], v_geo["y"], v_geo["x"])
+
+
+def _path_coordinates(
+    graph: nx.MultiGraph,
+    nodes: Sequence[Hashable],
+) -> list[Coordinate]:
+    """Expand a node path into full geometry-aware coordinates."""
+    if not nodes:
+        return []
+
+    stitched: list[Coordinate] = [
+        (graph.nodes[nodes[0]]["x"], graph.nodes[nodes[0]]["y"])
+    ]
+
+    for u, v in pairwise(nodes):
+        segment = _edge_geometry_coords(graph, u, v)
+        # Skip the first coordinate to avoid duplicates.
+        stitched.extend(segment[1:])
+
+    return stitched
+
+
+def _edge_geometry_coords(
+    graph: nx.MultiGraph,
+    u: Hashable,
+    v: Hashable,
+) -> list[Coordinate]:
+    """Return the geometry coordinates between adjacent nodes."""
+    candidate = _preferred_edge_attrs(graph, u, v)
+    start = (graph.nodes[u]["x"], graph.nodes[u]["y"])
+    end = (graph.nodes[v]["x"], graph.nodes[v]["y"])
+
+    if candidate is None:
+        return [start, end]
+
+    geometry = candidate.get("geometry")
+    if geometry is None or not hasattr(geometry, "coords"):
+        return [start, end]
+
+    coords = list(geometry.coords)
+    if not coords:
+        return [start, end]
+
+    oriented = _orient_coords(coords, start, end)
+    return oriented
+
+
+def _preferred_edge_attrs(
+    graph: nx.MultiGraph,
+    u: Hashable,
+    v: Hashable,
+) -> dict | None:
+    """Select a representative edge between `u` and `v`."""
+    edge_dict = graph.get_edge_data(u, v)
+    if not edge_dict:
+        return None
+    return min(
+        edge_dict.values(),
+        key=lambda data: data.get("length", float("inf")),
+    )
+
+
+def _orient_coords(
+    coords: list[Coordinate],
+    start: Coordinate,
+    end: Coordinate,
+) -> list[Coordinate]:
+    """Ensure polyline coordinates start near `start` and end near `end`."""
+    forward_score = _coord_distance(coords[0], start) + _coord_distance(coords[-1], end)
+    reverse = list(reversed(coords))
+    reverse_score = _coord_distance(reverse[0], start) + _coord_distance(
+        reverse[-1], end
+    )
+    oriented = coords if forward_score <= reverse_score else reverse
+
+    if _coord_distance(oriented[0], start) > GEOMETRY_TOLERANCE:
+        oriented = [start, *oriented]
+    if _coord_distance(oriented[-1], end) > GEOMETRY_TOLERANCE:
+        oriented = [*oriented, end]
+
+    return oriented
+
+
+def _coord_distance(a: Coordinate, b: Coordinate) -> float:
+    """Return squared Euclidean distance between two lon/lat points."""
+    dx = a[0] - b[0]
+    dy = a[1] - b[1]
+    return dx * dx + dy * dy
