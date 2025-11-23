@@ -41,13 +41,10 @@ pip install -r requirements.txt
 
 ### Graph Preparation
 
-Before the app can run search algorithms, a routable graph representation of the original _OpenStreetMap_ data has to be generated first.
+Before the app can run search algorithms, a routable graph of the original _OpenStreetMap_ data has to be created first. The project already comes with pre-downloaded & pre-processed map data ready for routing. Run the following command to redownloaded the file(s) if necessary.
 
-- Generate the routable graph from the _OpenStreetMap_ extract:
-  - `python -m scripts.build_graph`
-- (Optional) Export the graph back to _GeoJSON_ for validation:
-  - `python -m scripts.build_graph_geojson`
-
-The graph JSON stores `networkx` node-link data with untouched `lon`/`lat` intersections and edge coordinate chains so it can be reconstructed losslessly.
+```sh
+python ./scripts/download_osmnx_graph.py
+```
 
 ## Algorithm
