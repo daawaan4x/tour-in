@@ -12,12 +12,10 @@ import osmnx as ox
 from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import linemerge, split
 
-from .geo import great_circle_meters
+from tourin.server.utils.geo import Coordinate, great_circle_meters
 
 if TYPE_CHECKING:
     import networkx as nx
-
-Coordinate = tuple[float, float]  # (lon, lat)
 
 # (u, v, key) triple length used by NetworkX MultiGraphs.
 EDGE_TUPLE_SIZE = 3

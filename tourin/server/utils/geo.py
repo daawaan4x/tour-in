@@ -13,6 +13,9 @@ if _GREAT_CIRCLE is None:
         raise AttributeError(msg) from exc
 
 
+Coordinate = tuple[float, float]  # (lon, lat)
+
+
 def great_circle_meters(
     lat1: float,
     lon1: float,
@@ -21,4 +24,3 @@ def great_circle_meters(
 ) -> float:
     """Return the great-circle distance between two lat/lon points in meters."""
     return float(_GREAT_CIRCLE(lat1, lon1, lat2, lon2))
-

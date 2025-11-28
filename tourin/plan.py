@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from .logger import Logger, LoggingMode
+from .server.graph.stitch import stitch_path
+from .server.search.ucs import plan as ucs_plan
 from .setup import setup_graph
-from .ucs import Coordinate
-from .ucs import plan as ucs_plan
+
+if TYPE_CHECKING:
+    from .snap import Coordinate
 
 
 def plan(
@@ -37,4 +40,5 @@ def plan(
         graph = setup_graph()
     logger.graph_stats(graph)
 
-    return ucs_plan(graph, start, destinations, logger=logger)
+    node_path = ucs_plan(graph, start, destinations, logger=logger)
+    return stitch_path(graph, node_path)

@@ -8,12 +8,12 @@ import osmnx as ox
 if TYPE_CHECKING:
     import networkx as nx
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ASSETS_DIR = PROJECT_ROOT / "assets"
 DEFAULT_GRAPH_FILE = ASSETS_DIR / "ilocos_norte_osmnx.graphml"
 
 
-def setup_graph(graphml_path: str | Path | None = None) -> nx.MultiGraph:
+def load_graph(graphml_path: str | Path | None = None) -> nx.MultiGraph:
     """Load the cached OSMnx graph and return its undirected representation.
 
     Parameters
