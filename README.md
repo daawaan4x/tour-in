@@ -50,6 +50,33 @@ Before the app can run search algorithms, a routable graph of the original _Open
 python ./scripts/download_osmnx_graph.py
 ```
 
+### Development Server
+
+Start both the Flask API (Python) and the Vite frontend so the browser can reach the planner endpoint. The examples below assume you already installed the Python and Node dependencies described earlier.
+
+#### 1. Flask API
+
+Open a terminal in the project root, activate your virtual environment, then launch Flask with a single command:
+
+```sh
+cd <this-project-folder>
+
+# Activate your virtual environment here
+
+flask --app tourin.server.api --debug run
+```
+
+#### 2. Vite Frontend
+
+In a separate terminal, install the web dependencies (once) and launch the dev server. By default it should point straight to the Flask app above; override `VITE_API_BASE` in a `.env.local` file if you host the API elsewhere.
+
+```sh
+cd <this-project-folder>
+
+pnpm install    # or npm install / yarn install
+pnpm dev
+```
+
 ## Algorithm
 
 The route planner flows through a four-stage pipeline: it loads a cached Ilocos Norte road network graph, snaps the start & destination coordinates onto that road network, runs a uniform-cost search to order and connect the visits, and finally stitches the visited nodes back into the actual road geometry.
