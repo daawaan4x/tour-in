@@ -52,6 +52,111 @@ python ./scripts/download_osmnx_graph.py
 
 ## Algorithm
 
+The route planner flows through a four-stage pipeline: it loads a cached Ilocos Norte road network graph, snaps the start & destination coordinates onto that road network, runs a uniform-cost search to order and connect the visits, and finally stitches the visited nodes back into the actual road geometry.
+
+### Loading the Graph
+
+`tourin/server/graph/load.py` uses OSMnx to keep a preprocessed GraphML file (fetched via `scripts/download_osmnx_graph.py`) optimized for routing. The GraphML file has a simplified topology with the actual geometry of the roads preserved. The loader validates that the file exists, opens it once, and converts the directed graph to an undirected graph to simplify the search algorithms used in this project.
+
+```
+function load_graph():
+  ensure_exists(default_path)
+  directed = ox.load_graphml(default_path)
+  return ox.convert.to_undirected(directed)
+```
+
+### Snapping Input Coordinates to the Graph
+
+Before searching, `snap_coords` projects the raw `(lon, lat)` inputs onto the nearest nodes or edges. If a point falls closer to the middle of an edge, that edge is split and a synthetic node is inserted so every search algorithm downstream works purely with node IDs. A maximum snapping distance guard prevents impossible requests e.g. start/destination coordinates that are too far from any road.
+
+```
+function snap_coords(graph, coords):
+  snaps = []
+  for coord in coords:
+    nearest_node = ox.nearest_node(graph, coord)
+    nearest_edge = ox.nearest_edge(graph, coord)
+    if edge_is_closer(nearest_node, nearest_edge):
+      node_id = split_edge_with_synthetic_node(graph, nearest_edge, coord)
+    else:
+      node_id = nearest_node
+    snaps.append(node_id)
+  return snaps
+```
+
+To keep edge splits simple, a helper inserts a synthetic node wherever the projection falls along the middle of a road segment and rewires the surrounding edges so the graph stays routable:
+
+```
+function split_edge_with_synthetic_node(graph, edge, coord):
+  (u, v, key) = edge
+  geometry = edge_geometry(graph, u, v, key)
+  projected_point = project_point_onto_geometry(geometry, coord)
+  (first_segment, second_segment) = split_geometry(geometry, projected_point)
+
+  new_node = graph.add_node(lon=projected_point.x, lat=projected_point.y)
+  graph.remove_edge(u, v, key)
+  graph.add_edge(u, new_node, geometry=first_segment)
+  graph.add_edge(new_node, v, geometry=second_segment)
+  return new_node
+```
+
+### Running the Search Algorithm
+
+`tourin/server/search/ucs.py` implements a multi-destination Uniform Cost Search (UCS). Starting from the start node, it repeatedly expands the cheapest frontier until the closest remaining destination is reached, appends the traversed path to the full itinerary, and restarts the search from the most recent target node until every target is covered. Edge costs rely on the distances between nodes, so the planner naturally favors shorter travel.
+
+```
+function plan_route(graph, start_node, target_nodes):
+  pending = set(target_nodes)
+  full_path = [start_node]
+  current = start_node
+
+  while pending:
+    result = uniform_cost_search(graph, current, pending)
+    full_path.extend(result.path[1:])
+    pending.remove(result.target)
+    current = result.target
+
+  return full_path
+```
+
+The underlying UCS loop is still lightweight: it prioritizes the cheapest frontier entry, stops as soon as a target is reached, and keeps a best-cost cache to avoid re-exploring expensive detours.
+
+```
+function uniform_cost_search(graph, source, targets):
+  frontier = priority_queue()
+  frontier.push(cost=0, node=source, path=[source])
+  best_cost = {source: 0}
+
+  while frontier not empty:
+    (cost, node, path) = frontier.pop_lowest()
+    if node in targets: return {target: node, path: path, cost: cost}
+    if cost > best_cost[node]: continue
+
+    for neighbor in graph.neighbors(node):
+      edge_step = edge_cost(graph, node, neighbor)
+      new_cost = cost + edge_step
+      if new_cost < best_cost.get(neighbor, inf):
+        best_cost[neighbor] = new_cost
+        frontier.push(cost=new_cost, node=neighbor, path=path + [neighbor])
+
+  return None  # no reachable target
+```
+
+If `uniform_cost_search` returns nothing (meaning the frontier emptied without ever touching a destination), the high-level planner surfaces this as an error so the UI can tell the user that no valid tour exists for the supplied inputs.
+
+### Stitching the Output
+
+The final `stitch_path` step translates the node sequence into real-world coordinates. For each adjacent pair of nodes, it extracts the true road geometry of the edge, and concatenates the sampled points into one continuous LineString that can be rendered or exported.
+
+```
+function stitch_path(graph, node_path):
+  if node_path is empty: return []
+  coords = [lonlat(graph, node_path[0])]
+  for (u, v) in pairwise(node_path):
+    segment = edge_geometry_coords(graph, u, v)
+    coords.extend(segment[1:])
+  return coords
+```
+
 ### Manual Testing
 
 The following helper scripts are provided for development and experimentation:
