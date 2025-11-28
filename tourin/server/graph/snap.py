@@ -10,7 +10,7 @@ from uuid import uuid4
 import numpy as np
 import osmnx as ox
 from shapely.geometry import LineString, MultiLineString, Point
-from shapely.ops import linemerge, split
+from shapely.ops import linemerge, substring
 
 from tourin.server.utils.geo import Coordinate, great_circle_meters
 
@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 EDGE_TUPLE_SIZE = 3
 # When splitting an edge by a perpendicular projection we expect two segments.
 EXPECTED_SEGMENT_COUNT = 2
+# Minimum coordinate count required for a valid LineString segment.
+MIN_LINESTRING_COORDS = 2
 # Default maximum snapping distance in meters.
 SNAP_MAX_DISTANCE_M = 100.0
 
@@ -177,10 +179,9 @@ def _insert_synthetic_node(
     u, v, key = edge
     edge_attrs = dict(graph[u][v][key])
     line = _edge_geometry(graph, u, v, edge_attrs)
-    projected_point = _project_point(line, target_point)
+    projected_point, distance_along = _project_point(line, target_point)
 
-    segments = split(line, projected_point)
-    segment_list = list(segments.geoms)
+    segment_list = _split_line_segments(line, distance_along)
     if len(segment_list) != EXPECTED_SEGMENT_COUNT:
         # Degenerate case: fallback to whichever endpoint is closer.
         dist_to_u = projected_point.distance(
@@ -238,10 +239,29 @@ def _edge_geometry(
     return LineString([start, end])
 
 
-def _project_point(line: LineString, point: Point) -> Point:
-    """Project `point` onto `line` and return the closest point on the line."""
+def _project_point(line: LineString, point: Point) -> tuple[Point, float]:
+    """Project `point` onto `line` and return the closest point and distance."""
     distance_along = line.project(point)
-    return line.interpolate(distance_along)
+    projected_point = line.interpolate(distance_along)
+    return projected_point, distance_along
+
+
+def _split_line_segments(line: LineString, split_distance: float) -> list[LineString]:
+    """Return line fragments obtained by cutting `line` at `split_distance`."""
+    line_length = line.length
+    if line_length == 0 or split_distance <= 0 or split_distance >= line_length:
+        return []
+
+    first = substring(line, 0, split_distance)
+    second = substring(line, split_distance, line_length)
+
+    segments: list[LineString] = []
+    for segment in (first, second):
+        if isinstance(segment, LineString) and not segment.is_empty:
+            coords = list(segment.coords)
+            if len(coords) >= MIN_LINESTRING_COORDS:
+                segments.append(segment)
+    return segments
 
 
 def _linestring_length(line: LineString) -> float:
