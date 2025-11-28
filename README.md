@@ -10,7 +10,10 @@ App for finding the shortest path to tour places around Ilocos Norte — made wi
 ## Table of Contents
 
 1. [User Manual](#user-manual)
+   - [Setup & Installation](#setup--installation)
+   - [Graph Preparation](#graph-preparation)
 2. [Algorithm](#algorithm)
+   - [Manual Testing](#manual-testing)
 
 ## User Manual
 
@@ -48,3 +51,29 @@ python ./scripts/download_osmnx_graph.py
 ```
 
 ## Algorithm
+
+### Manual Testing
+
+The following helper scripts are provided for development and experimentation:
+
+#### `scripts/test_planner.py`
+
+- **Purpose**: Quickly try the route planner from the command line using a GeoJSON file of point features (start + destinations).
+- **Usage**:
+
+  ```sh
+  python -m scripts.test_planner
+  ```
+
+  Plot points in [geojson.io](https://geojson.io/) then copy the generated GeoJSON. The script will tell you where to paste your GeoJSON and will print a resulting route as GeoJSON to standard output. Afterwards, you can paste the generated GeoJSON back to [geojson.io](https://geojson.io/).
+
+#### `scripts/togpkg_osmnx_graph.py`
+
+- **Purpose**: Convert the default OSMnx GraphML file in `assets/` into a GeoPackage (`.gpkg`) file for use in GIS tools or other applications.
+- **Usage**:
+
+  ```sh
+  python -m scripts.togpkg_osmnx_graph
+  ```
+
+  This reads `assets/ilocos_norte_osmnx.graphml` and writes `assets/ilocos_norte_osmnx.gpkg`.
