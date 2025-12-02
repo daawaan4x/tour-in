@@ -1,16 +1,145 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-	<meta charset="UTF-8" />
-	<link rel="icon" type="image/svg+xml" href="/vite.svg" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Vite + TS</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route Planner</title>
+
+<!-- Soul Wave style font -->
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+
+    #destination-list {
+  background: #fff9ec;
+  border-radius: 12px;
+  padding: 10px;
+  margin-top: 10px;
+  max-height: 160px;
+  overflow-y: auto;
+  list-style: none;
+  min-height: 16px;
+}
+
+#destination-list li {
+  background: #ffe7b0;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+
+body {
+    margin: 0;
+    display: flex;
+    height: 100vh;
+    font-family: 'Quicksand', sans-serif;
+}
+
+/* SIDEBAR */
+#sidebar {
+    width: 360px;
+    background: linear-gradient(160deg, #d07e04, #f3772b);
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+/* TITLE */
+#title {
+    font-family: 'Bungee', cursive;
+    color: #fff7db;
+    font-size: 48px;
+    line-height: 1;
+}
+
+/* SECTION LABELS */
+.label {
+    margin-top: 25px;
+    margin-bottom: 6px;
+    font-weight: 700;
+    color: #fff3cc;
+}
+
+/* SEARCH BARS */
+input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+/* BUTTONS */
+#buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+button {
+    flex: 1;
+    padding: 14px;
+    border-radius: 18px;
+    border: none;
+    cursor: pointer;
+    background: #fff1ce;
+    font-weight: bold;
+    font-size: 13px;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: #ffe7b0;
+    transform: scale(1.03);
+}
+
+/* MAP */
+#map {
+    flex: 1;
+}
+
+/* ANIMATED "I'M IN" */
+.wave-text {
+    display: inline-block;
+    animation: float 2.5s ease-in-out infinite;
+}
+
+.wave-text.delay {
+    animation-delay: 0.3s;
+}
+
+@keyframes float {
+    0%   { transform: translateY(0px); }
+    50%  { transform: translateY(-8px); }
+    100% { transform: translateY(0px); }
+}
+
+</style>
 </head>
-
 <body>
-	<div id="app"></div>
-	<script type="module" src="../main.ts"></script>
-</body>
 
+<div id="sidebar">
+
+  <div id="title">
+    <span class="wave-text">TOUR</span><br>
+    <span class="wave-text delay">IN ✿</span>
+  </div>
+
+  <div id="autocomplete-start"></div>
+
+  <div class="label">Add Destinations</div>
+  <div id="autocomplete-dest"></div>
+
+<div class="label">Selected Destinations</div>
+<ul id="destination-list"></ul>
+
+</div>
+
+<div id="map"></div>
+
+<script type="module" src="../main.ts"></script>
+
+</body>
 </html>
