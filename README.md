@@ -7,6 +7,14 @@ App for finding the shortest path to tour places around Ilocos Norte — made wi
 - Select multiple Points of Interest (POIs) to visit
 - Start path from any starting location
 
+## Contributor
+
+In alphabetical order:
+
+- [Gartly Cortez](https://github.com/Toshihiro20) (@Toshihiro20)
+- JM Benito
+- [Theone Eclarin](https://github.com/daawaan4x) (@daawaan4x)
+
 ## Table of Contents
 
 1. [User Manual](#user-manual)
