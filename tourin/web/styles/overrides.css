@@ -1,0 +1,118 @@
+.search-control input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-8);
+  border: 1px solid rgb(47 36 29 / 20%);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-fast) var(--motion-ease-standard);
+}
+
+.search-control input::placeholder {
+  color: rgb(100 84 72 / 75%);
+}
+
+.search-control input:hover {
+  border-color: var(--color-border-strong);
+}
+
+.search-control input:focus-visible {
+  border-color: var(--color-accent-route);
+}
+
+.geoapify-autocomplete-items {
+  margin-top: var(--space-4);
+  border: 1px solid rgb(47 36 29 / 14%);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+.geoapify-autocomplete-items .autocomplete-item {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid rgb(47 36 29 / 10%);
+  font-size: var(--font-size-small);
+}
+
+.geoapify-autocomplete-items .autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.geoapify-autocomplete-items .autocomplete-item:hover,
+.geoapify-autocomplete-items .autocomplete-item-selected {
+  background: var(--color-accent-route-soft);
+}
+
+.leaflet-control-zoom {
+  border: 1px solid rgb(47 36 29 / 14%) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-sm) !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border: 1px solid rgb(47 36 29 / 14%);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+.leaflet-popup-content {
+  margin: var(--space-6) var(--space-8) !important;
+}
+
+.map-popup {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.map-popup .title {
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.map-popup .meta {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+}
+
+.tour-marker {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgb(47 36 29 / 24%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.tour-marker--start {
+  width: 36px;
+  height: 36px;
+  border-color: rgb(47 36 29 / 25%);
+  background: var(--color-brand-primary);
+  color: var(--color-text-inverse);
+}
+
+.tour-marker--destination {
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.tour-marker--active {
+  border-color: var(--color-accent-route);
+  background: var(--color-accent-route);
+  color: var(--color-text-inverse);
+}
