@@ -1,4 +1,6 @@
 {
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.analysis.typeCheckingMode": "basic",
   "yaml.schemas": {
     "https://json.schemastore.org/traefik-v2-file-provider.json": [
       "traefik/dynamic/dev/routes.yml",

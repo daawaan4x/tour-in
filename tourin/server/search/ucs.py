@@ -93,7 +93,7 @@ def _edge_travel_cost(
         return float("inf")
 
     length = candidate.get("length")
-    if length is not None:
+    if isinstance(length, (int, float)):
         return float(length)
 
     # When the edge lacks a precomputed length, approximate using coordinates.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from itertools import pairwise
-from typing import TYPE_CHECKING, Hashable, Sequence
+from typing import TYPE_CHECKING, Hashable, Mapping, Sequence
 
 if TYPE_CHECKING:
     import networkx as nx
@@ -61,15 +61,32 @@ def preferred_edge_attrs(
     graph: nx.MultiGraph,
     u: Hashable,
     v: Hashable,
-) -> dict | None:
+) -> Mapping[str, object] | None:
     """Select a representative edge between `u` and `v`."""
     edge_dict = graph.get_edge_data(u, v)
-    if not edge_dict:
+    if not isinstance(edge_dict, dict) or not edge_dict:
         return None
+
+    candidate_attrs = [
+        attrs
+        for attrs in edge_dict.values()
+        if isinstance(attrs, Mapping)
+    ]
+    if not candidate_attrs:
+        return None
+
     return min(
-        edge_dict.values(),
-        key=lambda data: data.get("length", float("inf")),
+        candidate_attrs,
+        key=_edge_length_or_inf,
     )
+
+
+def _edge_length_or_inf(attrs: Mapping[str, object]) -> float:
+    """Return edge length as float, or +inf when absent/invalid."""
+    length = attrs.get("length")
+    if isinstance(length, (int, float)):
+        return float(length)
+    return float("inf")
 
 
 def extract_geometry_coords(geometry: object) -> list[Coordinate] | None:

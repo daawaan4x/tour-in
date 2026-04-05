@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import pairwise
-from typing import TYPE_CHECKING, Hashable, Literal, Sequence
+from numbers import Real
+from typing import TYPE_CHECKING, Hashable, Literal, Sequence, cast
 from uuid import uuid4
 
 import numpy as np
@@ -73,23 +74,24 @@ def snap_coords(
 
     # Collect candidate nodes/edges in a single batch for performance.
     lons, lats = zip(*coords)
+    di_graph = cast("nx.MultiDiGraph", graph)
     node_ids_raw, node_dists_raw = ox.distance.nearest_nodes(
-        graph,
+        di_graph,
         X=lons,
         Y=lats,
         return_dist=True,
     )
     edge_ids_raw, edge_dists_raw = ox.distance.nearest_edges(
-        graph,
+        di_graph,
         X=lons,
         Y=lats,
         return_dist=True,
     )
 
-    node_ids = _ensure_list(node_ids_raw)
-    node_dists = _ensure_list(node_dists_raw)
+    node_ids = _ensure_hashable_list(node_ids_raw)
+    node_dists = _ensure_float_list(node_dists_raw)
     edge_ids = _ensure_edge_list(edge_ids_raw)
-    edge_dists = _ensure_list(edge_dists_raw)
+    edge_dists = _ensure_optional_float_list(edge_dists_raw)
 
     snapped: list[SnapResult] = []
 
@@ -136,38 +138,80 @@ def snap_coords(
     return snapped
 
 
-def _ensure_list(value: object) -> list:
+def _ensure_list(value: object) -> list[object]:
     """Return a plain list regardless of whether `value` is scalar/tuple/array."""
     if isinstance(value, np.ndarray):
-        return value.tolist()
+        as_list = value.tolist()
+        if isinstance(as_list, list):
+            return as_list
+        if isinstance(as_list, tuple):
+            return list(as_list)
+        return [as_list]
     if isinstance(value, (list, tuple)):
         return list(value)
     return [value]
+
+
+def _ensure_hashable_list(value: object) -> list[Hashable]:
+    """Normalize scalar/array/tuple values into hashable Python values."""
+    return [cast(Hashable, item) for item in _ensure_list(value)]
+
+
+def _ensure_float_list(value: object) -> list[float]:
+    """Normalize scalar/array/tuple numeric values into Python floats."""
+    result: list[float] = []
+    for item in _ensure_list(value):
+        if not isinstance(item, Real):
+            msg = f"Expected numeric value, got {item!r}"
+            raise TypeError(msg)
+        result.append(float(item))
+    return result
+
+
+def _ensure_optional_float_list(value: object) -> list[float | None]:
+    """Normalize numeric values while preserving explicit `None` entries."""
+    result: list[float | None] = []
+    for item in _ensure_list(value):
+        if item is None:
+            result.append(None)
+        elif isinstance(item, Real):
+            result.append(float(item))
+        else:
+            msg = f"Expected numeric/None value, got {item!r}"
+            raise TypeError(msg)
+    return result
 
 
 def _ensure_edge_list(
     value: object,
 ) -> list[tuple[Hashable, Hashable, int]]:
     """Normalize the varied return shapes from `ox.distance.nearest_edges`."""
-    if isinstance(value, np.ndarray):
-        flattened = value.tolist()
-        if not isinstance(flattened, (list, tuple)):
-            flattened = [flattened]
-        # When the array represents a single edge, `tolist` returns a flat list
-        # of scalars (e.g., [u, v, key]). Wrap it so callers can index per edge.
-        if isinstance(flattened, list) and flattened:
-            first = flattened[0]
-            if not isinstance(first, (list, tuple, np.ndarray)):
-                return [tuple(flattened)]  # type: ignore[list-item]
-        if isinstance(flattened, tuple) and len(flattened) == EDGE_TUPLE_SIZE:
-            return [flattened]
-        return [
-            tuple(item) if isinstance(item, (list, tuple, np.ndarray)) else (item,)
-            for item in flattened
-        ]
-    if isinstance(value, tuple) and len(value) == EDGE_TUPLE_SIZE:
-        return [value]
-    return [tuple(edge) for edge in value]  # type: ignore[arg-type]
+    normalized: object = value.tolist() if isinstance(value, np.ndarray) else value
+    if _is_scalar_edge_triplet(normalized):
+        return [_coerce_edge_tuple(normalized)]
+
+    edge_items = _ensure_list(normalized)
+    return [_coerce_edge_tuple(item) for item in edge_items]
+
+
+def _is_scalar_edge_triplet(value: object) -> bool:
+    """Return True when value looks like a single (u, v, key) edge tuple."""
+    if not isinstance(value, (list, tuple)):
+        return False
+    if len(value) != EDGE_TUPLE_SIZE:
+        return False
+    return all(not isinstance(item, (list, tuple, np.ndarray)) for item in value)
+
+
+def _coerce_edge_tuple(value: object) -> tuple[Hashable, Hashable, int]:
+    """Coerce an edge-like object into a typed (u, v, key) tuple."""
+    normalized = value.tolist() if isinstance(value, np.ndarray) else value
+    if not isinstance(normalized, (list, tuple)) or len(normalized) != EDGE_TUPLE_SIZE:
+        msg = f"Expected edge triplet (u, v, key), got {value!r}"
+        raise ValueError(msg)
+
+    u, v, key = normalized
+    return (cast(Hashable, u), cast(Hashable, v), int(key))
 
 
 def _insert_synthetic_node(
@@ -177,7 +221,14 @@ def _insert_synthetic_node(
 ) -> Hashable:
     """Split an edge and insert a synthetic node nearest to `target_point`."""
     u, v, key = edge
-    edge_attrs = dict(graph[u][v][key])
+    edge_data = cast(
+        "dict[object, dict[str, object]] | None",
+        graph.get_edge_data(u, v),
+    )
+    if not edge_data or key not in edge_data:
+        msg = f"Unable to locate edge attributes for ({u}, {v}, {key})."
+        raise KeyError(msg)
+    edge_attrs = dict(edge_data[key])
     line = _edge_geometry(graph, u, v, edge_attrs)
     projected_point, distance_along = _project_point(line, target_point)
 
