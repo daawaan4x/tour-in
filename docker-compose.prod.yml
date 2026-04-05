@@ -1,0 +1,46 @@
+services:
+  api:
+    image: tourin-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - tourin-api:latest
+      cache_to:
+        - type=inline
+    env_file:
+      - .env
+    environment:
+      TOURIN_ENV: ${TOURIN_ENV:-production}
+      TOURIN_PORT: ${TOURIN_PORT:-5000}
+      TOURIN_GRAPHML_PATH: ${TOURIN_GRAPHML_PATH:-/app/assets/ilocos_norte_osmnx.graphml}
+      TOURIN_CORS_ALLOWED_ORIGIN: ${TOURIN_CORS_ALLOWED_ORIGIN}
+    volumes:
+      - ./assets:/app/assets:ro
+    restart: unless-stopped
+    networks:
+      - internal
+
+  proxy:
+    image: traefik:v3.1
+    environment:
+      TRAEFIK_ENTRYPOINTS_WEB_FORWARDEDHEADERS_TRUSTEDIPS: ${TOURIN_CLOUDFLARE_TRUSTED_IPS}
+    command:
+      - --configFile=/etc/traefik/traefik.yml
+    ports:
+      - "80:80"
+      - "127.0.0.1:${TOURIN_TRAEFIK_METRICS_PORT:-8082}:8082"
+      - "${TOURIN_TRAEFIK_DASHBOARD_BIND:-127.0.0.1:8080}:8080"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic/${TOURIN_TRAEFIK_DYNAMIC_ENV:-prod}:/etc/traefik/dynamic:ro
+    restart: unless-stopped
+    networks:
+      - internal
+      - edge
+
+networks:
+  edge:
+    name: tourin-edge
+  internal:
+    name: tourin-internal

@@ -1,0 +1,36 @@
+http:
+  routers:
+    tourin-api:
+      rule: "(Host(`localhost`) || Host(`127.0.0.1`))"
+      entryPoints:
+        - web
+      service: tourin-api-svc
+      priority: 1
+
+    tourin-api-limited:
+      rule: "(Host(`localhost`) || Host(`127.0.0.1`)) && Path(`/api/route`)"
+      entryPoints:
+        - web
+      service: tourin-api-svc
+      priority: 10
+      middlewares:
+        - tourin-api-ratelimit
+
+    tourin-traefik-dashboard:
+      rule: "PathPrefix(`/api`) || PathPrefix(`/dashboard`)"
+      entryPoints:
+        - traefik
+      service: api@internal
+
+  middlewares:
+    tourin-api-ratelimit:
+      rateLimit:
+        average: 30
+        burst: 60
+        period: 1s
+
+  services:
+    tourin-api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://api:5000"

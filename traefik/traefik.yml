@@ -1,0 +1,26 @@
+api:
+  dashboard: true
+
+ping: {}
+
+entryPoints:
+  web:
+    address: ":80"
+  metrics:
+    address: ":8082"
+  traefik:
+    address: ":8080"
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+accessLog:
+  format: json
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addServicesLabels: true

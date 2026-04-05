@@ -1,0 +1,9 @@
+{
+  "yaml.schemas": {
+    "https://json.schemastore.org/traefik-v2-file-provider.json": [
+      "traefik/dynamic/dev/routes.yml",
+      "traefik/dynamic/prod/routes.yml"
+    ],
+    "https://json.schemastore.org/traefik-v2.json": "traefik/traefik.yml"
+  }
+}

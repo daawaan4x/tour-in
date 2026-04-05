@@ -7,6 +7,7 @@ from typing import Sequence
 from flask import Flask, Response, jsonify, request
 from werkzeug.exceptions import BadRequest
 
+from tourin.server.config import load_server_config
 from tourin.server.graph.load import load_graph
 from tourin.server.graph.snap import snap_coords
 from tourin.server.graph.stitch import stitch_path
@@ -16,7 +17,8 @@ Coordinate = tuple[float, float]
 
 app = Flask(__name__)
 
-GRAPH = load_graph()
+CONFIG = load_server_config()
+GRAPH = load_graph(CONFIG.graphml_path)
 
 
 def _parse_coordinate(payload: object, label: str) -> Coordinate:
@@ -48,9 +50,14 @@ def _parse_destinations(payload: object) -> list[Coordinate]:
 @app.after_request
 def _inject_cors(response: Response) -> Response:  # type: ignore[override]
     """Allow simple cross-origin requests from the browser frontend."""
-    response.headers.setdefault("Access-Control-Allow-Origin", "*")
+    response.headers.setdefault(
+        "Access-Control-Allow-Origin",
+        CONFIG.cors_allowed_origin,
+    )
     response.headers.setdefault("Access-Control-Allow-Headers", "Content-Type")
     response.headers.setdefault("Access-Control-Allow-Methods", "POST, OPTIONS")
+    if CONFIG.cors_allowed_origin != "*":
+        response.headers.setdefault("Vary", "Origin")
     return response
 
 
@@ -103,4 +110,4 @@ def _serialize_coordinates(coords: Sequence[Coordinate]) -> list[list[float]]:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    app.run()
+    app.run(port=CONFIG.port)

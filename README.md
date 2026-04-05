@@ -20,6 +20,9 @@ In alphabetical order:
 1. [User Manual](#user-manual)
    - [Setup & Installation](#setup--installation)
    - [Graph Preparation](#graph-preparation)
+   - [Environment Configuration](#environment-configuration)
+   - [Development Server](#development-server)
+   - [Production Deployment](#production-deployment)
 2. [Algorithm](#algorithm)
    - [Manual Testing](#manual-testing)
 
@@ -58,6 +61,25 @@ Before the app can run search algorithms, a routable graph of the original _Open
 python ./scripts/download_osmnx_graph.py
 ```
 
+### Environment Configuration
+
+This project now uses a single root `.env` file for both backend and frontend values.
+
+```sh
+cd <this-project-folder>
+cp .env.example .env
+```
+
+Key variables:
+
+- `VITE_API_URL`: frontend API origin.
+- `VITE_GEOAPIFY_API_KEY`: browser geocoder key (restrict this key to your frontend domain in Geoapify dashboard).
+- `TOURIN_GRAPHML_PATH`: GraphML path read by the backend.
+- `TOURIN_CORS_ALLOWED_ORIGIN`: single allowed frontend origin for browser calls.
+- `TOURIN_TRAEFIK_DYNAMIC_ENV`: selects Traefik dynamic config directory (`prod` or `dev`).
+- `TOURIN_TRAEFIK_METRICS_PORT`: Traefik metrics port bind.
+- `TOURIN_TRAEFIK_DASHBOARD_BIND`: Traefik dashboard/API bind address.
+
 ### Development Server
 
 Start both the Flask API (Python) and the Vite frontend so the browser can reach the planner endpoint. The examples below assume you already installed the Python and Node dependencies described earlier.
@@ -76,7 +98,7 @@ flask --app tourin.server.api --debug run
 
 #### 2. Vite Frontend
 
-In a separate terminal, install the web dependencies (once) and launch the dev server. By default it should point straight to the Flask app above; override `VITE_API_BASE` in a `.env.local` file if you host the API elsewhere.
+In a separate terminal, install the web dependencies (once) and launch the dev server. By default, frontend API calls use `VITE_API_URL` from `.env` and fall back to `http://localhost:5000` if omitted.
 
 ```sh
 cd <this-project-folder>
@@ -84,6 +106,71 @@ cd <this-project-folder>
 pnpm install    # or npm install / yarn install
 pnpm dev
 ```
+
+### Containerized Dev Stack (Prod-Like)
+
+Use this when you want to test the same backend runtime stack used in production (Docker image + Gunicorn + Traefik) on localhost.
+
+```sh
+cd <this-project-folder>
+
+# Ensure .env is configured first.
+DOCKER_BUILDKIT=1 docker compose up -d --build
+```
+
+Default local endpoints:
+
+- API via Traefik: `http://localhost:${TOURIN_PORT}/api/route` (default `5000`)
+- Traefik metrics: `http://127.0.0.1:${TOURIN_TRAEFIK_METRICS_PORT}/metrics` (default `8082`)
+- Traefik dashboard: `http://${TOURIN_TRAEFIK_DASHBOARD_BIND}/dashboard/` (default `127.0.0.1:8080`)
+
+Stop the stack:
+
+```sh
+docker compose down
+```
+
+### Production Deployment
+
+Production backend deployment uses Docker BuildKit, Gunicorn, and Traefik reverse proxy.
+Traefik routing/middleware definitions are file-based in `traefik/`.
+
+#### 1. Build and start services
+
+```sh
+cd <this-project-folder>
+
+# Ensure .env is configured first.
+DOCKER_BUILDKIT=1 docker compose -f docker-compose.prod.yml up -d --build
+```
+
+This starts:
+
+- `api`: internal backend container (no public port binding).
+- `proxy`: Traefik edge container with per-IP rate limiting on `/api/route`.
+
+Traefik config layout:
+
+- Static config: `traefik/traefik.yml`
+- Dynamic routers/middlewares/services: `traefik/dynamic/<env>/routes.yml`
+- `proxy`: upstream is explicitly defined as `http://api:5000`.
+
+Available dynamic environments:
+
+- `traefik/dynamic/dev/routes.yml`
+- `traefik/dynamic/prod/routes.yml`
+
+Set `TOURIN_TRAEFIK_DYNAMIC_ENV` in `.env` to select which one is mounted.
+
+#### 2. Observability
+
+- Prometheus metrics: `127.0.0.1:${TOURIN_TRAEFIK_METRICS_PORT}`
+- Dashboard/API: bound by `TOURIN_TRAEFIK_DASHBOARD_BIND` (internal-only by default)
+- Access logs: emitted in JSON format from the Traefik container logs.
+
+#### 3. Cloudflare
+
+When deploying behind Cloudflare, restrict origin ingress to Cloudflare IP ranges and keep `TOURIN_CLOUDFLARE_TRUSTED_IPS` aligned with Cloudflare's published list. This is required for reliable per-client IP rate limiting.
 
 ## Algorithm
 

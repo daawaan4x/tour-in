@@ -1,0 +1,11 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+node_modules
+dist
+dist-ssr
+.buildx-cache
+.env
+*.log

@@ -17,9 +17,12 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.buildx-cache
 
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
 .DS_Store
 *.suo

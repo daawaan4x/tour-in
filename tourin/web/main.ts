@@ -1,5 +1,24 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import markerIcon2xUrl from "leaflet/dist/images/marker-icon-2x.png";
+import markerIconUrl from "leaflet/dist/images/marker-icon.png";
+import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
+
+const API_URL = (
+  import.meta.env.VITE_API_URL ?? "http://localhost:5000"
+).replace(/\/+$/, "");
+const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
+if (!GEOAPIFY_API_KEY) {
+  throw new Error("Missing VITE_GEOAPIFY_API_KEY environment variable.");
+}
+
+// Leaflet's CSS-based icon path detection can fail when assets are inlined in Vite builds.
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2xUrl,
+  iconUrl: markerIconUrl,
+  shadowUrl: markerShadowUrl,
+});
 
 // MAP SETUP
 const map = L.map("map").setView([18.194343, 120.6911117], 10);
@@ -9,16 +28,13 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap",
 }).addTo(map);
 
-// GEOAPIFY API KEY
-const API_KEY = "86018fe289554e6a810811b58eaf0a13";
-
 // AUTOCOMPLETE FOR DESTINATIONS
 import { GeocoderAutocomplete } from "@geoapify/geocoder-autocomplete";
 import "@geoapify/geocoder-autocomplete/styles/minimal.css";
 
 const destAuto = new GeocoderAutocomplete(
   document.getElementById("autocomplete-dest")!,
-  API_KEY,
+  GEOAPIFY_API_KEY,
   {
     placeholder: "Add destination",
     lang: "en",
@@ -27,7 +43,7 @@ const destAuto = new GeocoderAutocomplete(
       place:
         "51b65426295a295e405923591868d23d3240f00101f901e8f516000000000092030c496c6f636f73204e6f727465",
     },
-  }
+  },
 );
 
 // DATA STORAGE
@@ -107,7 +123,7 @@ async function planRoute() {
   if (!startCoords) return drawRoute([]);
   if (destinations.length === 0) return drawRoute([]);
 
-  const response = await fetch("http://localhost:5000/api/route", {
+  const response = await fetch(`${API_URL}/api/route`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

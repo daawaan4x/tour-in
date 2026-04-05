@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,8 +20,9 @@ def load_graph(graphml_path: str | Path | None = None) -> nx.MultiGraph:
     Parameters
     ----------
     graphml_path:
-        Optional custom path to the GraphML file. When omitted, the default
-        `assets/ilocos_norte_osmnx.graphml` file is used.
+        Optional custom path to the GraphML file. When omitted, this loader
+        checks `TOURIN_GRAPHML_PATH` then falls back to
+        `assets/ilocos_norte_osmnx.graphml`.
 
     Returns
     -------
@@ -28,7 +30,7 @@ def load_graph(graphml_path: str | Path | None = None) -> nx.MultiGraph:
         An undirected NetworkX graph ready for path-finding algorithms.
 
     """
-    path = Path(graphml_path) if graphml_path is not None else DEFAULT_GRAPH_FILE
+    path = _resolve_graph_path(graphml_path).expanduser()
     if not path.exists():
         msg = f"GraphML file not found: {path}"
         raise FileNotFoundError(msg)
@@ -37,3 +39,14 @@ def load_graph(graphml_path: str | Path | None = None) -> nx.MultiGraph:
 
     # Drop directionality for easier routing.
     return ox.convert.to_undirected(directed_graph)
+
+
+def _resolve_graph_path(graphml_path: str | Path | None) -> Path:
+    if graphml_path is not None:
+        return Path(graphml_path)
+
+    env_path = os.getenv("TOURIN_GRAPHML_PATH")
+    if env_path is not None and env_path.strip():
+        return Path(env_path)
+
+    return DEFAULT_GRAPH_FILE
