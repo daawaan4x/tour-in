@@ -6,6 +6,8 @@ ping: {}
 entryPoints:
   web:
     address: ":80"
+  websecure:
+    address: ":443"
   metrics:
     address: ":8082"
   traefik:

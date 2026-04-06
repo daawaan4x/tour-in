@@ -25,10 +25,12 @@ services:
     image: traefik:v3.1
     environment:
       TRAEFIK_ENTRYPOINTS_WEB_FORWARDEDHEADERS_TRUSTEDIPS: ${TOURIN_CLOUDFLARE_TRUSTED_IPS}
+      TRAEFIK_ENTRYPOINTS_WEBSECURE_FORWARDEDHEADERS_TRUSTEDIPS: ${TOURIN_CLOUDFLARE_TRUSTED_IPS}
     command:
       - --configFile=/etc/traefik/traefik.yml
     ports:
       - "80:80"
+      - "443:443"
       - "127.0.0.1:${TOURIN_TRAEFIK_METRICS_PORT:-8082}:8082"
       - "${TOURIN_TRAEFIK_DASHBOARD_BIND:-127.0.0.1:8080}:8080"
     volumes:

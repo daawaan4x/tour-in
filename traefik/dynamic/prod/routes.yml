@@ -1,18 +1,29 @@
 http:
   routers:
-    tourin-api:
+    tourin-api-http:
       rule: "Host(`api-tourin.theoneeclarin.com`)"
       entryPoints:
         - web
       service: tourin-api-svc
       priority: 1
+      middlewares:
+        - tourin-https-redirect
+
+    tourin-api:
+      rule: "Host(`api-tourin.theoneeclarin.com`)"
+      entryPoints:
+        - websecure
+      service: tourin-api-svc
+      priority: 1
+      tls: {}
 
     tourin-api-limited:
       rule: "Host(`api-tourin.theoneeclarin.com`) && Path(`/api/route`)"
       entryPoints:
-        - web
+        - websecure
       service: tourin-api-svc
       priority: 10
+      tls: {}
       middlewares:
         - tourin-api-ratelimit
 
@@ -23,6 +34,11 @@ http:
       service: api@internal
 
   middlewares:
+    tourin-https-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
     tourin-api-ratelimit:
       rateLimit:
         average: 30
