@@ -18,6 +18,7 @@ import "./styles/base.css";
 import "./styles/overrides.css";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+const TRACESTRACK_API_KEY = import.meta.env.VITE_TRACESTRACK_API_KEY;
 const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
 
 function requireElementById<T extends HTMLElement>(id: string): T {
@@ -69,7 +70,7 @@ renderer.render(store.getState());
 
 const mapAdapter = createLeafletMapAdapter({
   mapElementId: "map",
-  traceStrackApiKey: "1a57e187a51e83b51bd3c3104fe906d7",
+  traceStrackApiKey: TRACESTRACK_API_KEY,
   onMapClick: (lat, lon) => {
     tripActions.selectStartFromMap(createMapStartPlace(lat, lon));
   },
