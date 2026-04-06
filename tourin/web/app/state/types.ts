@@ -20,6 +20,7 @@ export interface PlaceRef {
 export interface AppState {
   start: PlaceRef | null;
   destinations: PlaceRef[];
+  itineraryOrder: string[];
   routeCoords: [number, number][];
   routeDistanceKm: number | null;
   routeStatus: RouteStatus;

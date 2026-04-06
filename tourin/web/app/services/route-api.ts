@@ -2,15 +2,21 @@ import type { PlaceRef } from "../state/types";
 
 type RouteApiPayload = {
   start: { lat: number; lon: number };
-  destinations: Array<{ lat: number; lon: number }>;
+  destinations: Array<{ id: string; lat: number; lon: number }>;
 };
 
 type RouteApiSuccess = {
   route: unknown;
+  itinerary_order: unknown;
 };
 
+export interface RoutePlanResult {
+  routeCoords: [number, number][];
+  itineraryOrder: string[];
+}
+
 export interface RouteApiClient {
-  planRoute(start: PlaceRef, destinations: PlaceRef[]): Promise<[number, number][]>;
+  planRoute(start: PlaceRef, destinations: PlaceRef[]): Promise<RoutePlanResult>;
 }
 
 interface CreateRouteApiClientOptions {
@@ -30,6 +36,10 @@ function isRouteCoordinate(value: unknown): value is [number, number] {
     typeof value[1] === "number" &&
     Number.isFinite(value[1])
   );
+}
+
+function isDestinationId(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 async function extractErrorMessage(response: Response): Promise<string> {
@@ -67,6 +77,7 @@ export function createRouteApiClient(
           lon: start.lon,
         },
         destinations: destinations.map((destination) => ({
+          id: destination.id,
           lat: destination.lat,
           lon: destination.lon,
         })),
@@ -87,6 +98,9 @@ export function createRouteApiClient(
       if (!Array.isArray(body.route)) {
         throw new Error("Route response is invalid.");
       }
+      if (!Array.isArray(body.itinerary_order)) {
+        throw new Error("Route itinerary response is invalid.");
+      }
 
       const route = body.route.filter(isRouteCoordinate);
       if (route.length < 2) {
@@ -95,7 +109,18 @@ export function createRouteApiClient(
         );
       }
 
-      return route;
+      const itineraryOrder = body.itinerary_order.filter(isDestinationId);
+      if (itineraryOrder.length !== destinations.length) {
+        throw new Error("Route itinerary response is invalid.");
+      }
+      if (new Set(itineraryOrder).size !== itineraryOrder.length) {
+        throw new Error("Route itinerary response is invalid.");
+      }
+
+      return {
+        routeCoords: route,
+        itineraryOrder,
+      };
     },
   };
 }

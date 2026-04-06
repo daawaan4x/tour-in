@@ -64,6 +64,11 @@ a {
   animation: route-pending-spinner 620ms linear infinite;
 }
 
+.route-pending-spinner--compact {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
 @media (max-width: 1080px) {
   body {
     overflow: auto;

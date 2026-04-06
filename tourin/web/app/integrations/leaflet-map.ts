@@ -3,6 +3,7 @@ import markerIcon2xUrl from "leaflet/dist/images/marker-icon-2x.png";
 import markerIconUrl from "leaflet/dist/images/marker-icon.png";
 import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
 
+import { deriveDisplayDestinations } from "../state/selectors";
 import type { AppState, PlaceRef } from "../state/types";
 
 let didConfigureDefaultIcon = false;
@@ -41,7 +42,7 @@ function createPopupContent(place: PlaceRef): HTMLElement {
 }
 
 function createMarkerIcon(
-  label: string,
+  markerContent: string,
   variant: "start" | "destination",
   isActive: boolean,
 ): L.DivIcon {
@@ -52,10 +53,18 @@ function createMarkerIcon(
 
   return L.divIcon({
     className: classNames.join(" "),
-    html: label,
+    html: markerContent,
     iconSize: [36, 36],
     iconAnchor: [18, 18],
   });
+}
+
+function markerContent(index: number, isPlanning: boolean): string {
+  if (!isPlanning) {
+    return String(index + 1);
+  }
+
+  return '<span class="route-pending-spinner route-pending-spinner--compact tour-marker-spinner" aria-hidden="true"></span><span class="sr-only">Updating stop order</span>';
 }
 
 export interface LeafletMapAdapter {
@@ -99,6 +108,7 @@ export function createLeafletMapAdapter(
   const buildDestinationMarkerMap = (
     destinations: PlaceRef[],
     focusedDestinationId: string | null,
+    isPlanning: boolean,
   ): Map<string, L.Marker> => {
     destinationLayer.remove();
     destinationLayer = L.layerGroup().addTo(map);
@@ -107,7 +117,7 @@ export function createLeafletMapAdapter(
     destinations.forEach((destination, index) => {
       const marker = L.marker([destination.lat, destination.lon], {
         icon: createMarkerIcon(
-          String(index + 1),
+          markerContent(index, isPlanning),
           "destination",
           destination.id === focusedDestinationId,
         ),
@@ -142,8 +152,9 @@ export function createLeafletMapAdapter(
       }
 
       const destinationMarkers = buildDestinationMarkerMap(
-        state.destinations,
+        deriveDisplayDestinations(state.destinations, state.itineraryOrder),
         state.focusedDestinationId,
+        state.routeStatus === "planning",
       );
 
       if (state.routeCoords.length > 1) {

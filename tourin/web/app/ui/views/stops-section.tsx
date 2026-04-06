@@ -52,7 +52,17 @@ export function StopsAndItinerarySection(props: StopsAndItinerarySectionProps) {
             }}
           >
             <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-bg-card-muted)] px-1 [font-family:var(--font-mono)] text-[var(--font-size-small)] font-medium text-[var(--color-text-primary)]">
-              {index + 1}
+              {props.isPlanning ? (
+                <>
+                  <span
+                    class="route-pending-spinner route-pending-spinner--compact"
+                    aria-hidden="true"
+                  />
+                  <span class="sr-only">Updating stop order</span>
+                </>
+              ) : (
+                index + 1
+              )}
             </span>
             <div class="grid flex-1 gap-0.5">
               <p class="text-[var(--font-size-small)] font-normal">{destination.name}</p>

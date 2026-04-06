@@ -27,6 +27,7 @@ export function createRouteActions(
         ...prev,
         routeStatus: deriveRouteStatusFromTrip(prev.start, prev.destinations),
         routeError: null,
+        itineraryOrder: [],
       }));
       return;
     }
@@ -43,11 +44,15 @@ export function createRouteActions(
       routeStatus: "planning",
       routeError: null,
       focusedDestinationId: null,
+      itineraryOrder: [],
     }));
 
     try {
-      const coords = await routeApiClient.planRoute(state.start, state.destinations);
-      const routeDistanceKm = computeRouteDistanceKm(coords);
+      const planResult = await routeApiClient.planRoute(
+        state.start,
+        state.destinations,
+      );
+      const routeDistanceKm = computeRouteDistanceKm(planResult.routeCoords);
 
       store.setState((prev) => {
         if (requestId !== latestRequestId) {
@@ -56,10 +61,11 @@ export function createRouteActions(
 
         return {
           ...prev,
-          routeCoords: coords,
+          routeCoords: planResult.routeCoords,
           routeDistanceKm,
           routeStatus: "ready",
           routeError: null,
+          itineraryOrder: planResult.itineraryOrder,
         };
       });
     } catch (error) {
@@ -78,6 +84,7 @@ export function createRouteActions(
           routeDistanceKm: null,
           routeStatus: "error",
           routeError: message,
+          itineraryOrder: [],
         };
       });
     }
@@ -100,6 +107,7 @@ export function createRouteActions(
           routeStatus: deriveRouteStatusFromTrip(prev.start, prev.destinations),
           routeError: null,
           focusedDestinationId: null,
+          itineraryOrder: [],
         };
       });
     },

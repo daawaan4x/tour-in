@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from heapq import heappop, heappush
 from typing import TYPE_CHECKING, Hashable, Iterable, Sequence
@@ -22,33 +23,48 @@ class UCSResult:
     cost: float
 
 
+@dataclass(slots=True)
+class UCSPlanResult:
+    """Container for a multi-destination UCS plan."""
+
+    node_path: list[Hashable]
+    visited_target_nodes: list[Hashable]
+
+
 def plan(
     graph: nx.MultiGraph,
     start_node: Hashable,
     target_nodes: Sequence[Hashable],
-) -> list[Hashable]:
+) -> UCSPlanResult:
     """Plan the node sequence that visits all destinations via UCS."""
     if not target_nodes:
         msg = "At least one destination coordinate is required."
         raise ValueError(msg)
 
-    pending_targets = {*target_nodes}
+    pending_targets = Counter(target_nodes)
 
     # Track the accumulated node path; reuse junction nodes only once.
     full_path: list[Hashable] = [start_node]
+    visited_target_nodes: list[Hashable] = []
     current_node = start_node
 
     while pending_targets:
-        result = _ucs(graph, current_node, pending_targets)
+        result = _ucs(graph, current_node, pending_targets.keys())
         if result is None:
             msg = "No route found for remaining destinations."
             raise RuntimeError(msg)
         _, path = result.target, result.path
         full_path.extend(path[1:])  # avoid duplicating junction node
-        pending_targets.remove(result.target)
+        visited_target_nodes.append(result.target)
+        pending_targets[result.target] -= 1
+        if pending_targets[result.target] == 0:
+            del pending_targets[result.target]
         current_node = result.target
 
-    return full_path
+    return UCSPlanResult(
+        node_path=full_path,
+        visited_target_nodes=visited_target_nodes,
+    )
 
 
 def _ucs(

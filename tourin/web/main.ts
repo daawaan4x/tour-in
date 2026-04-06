@@ -33,6 +33,7 @@ function requireElementById<T extends HTMLElement>(id: string): T {
 const initialState: AppState = {
   start: null,
   destinations: [],
+  itineraryOrder: [],
   routeCoords: [],
   routeDistanceKm: null,
   routeStatus: GEOAPIFY_API_KEY ? "missing-start" : "error",

@@ -1,4 +1,5 @@
 import type { AppState } from "../state/types";
+import { deriveDisplayDestinations } from "../state/selectors";
 import { MapSummaryOverlay } from "./views/map-summary-overlay";
 import { StartSection } from "./views/start-section";
 import { StopsAndItinerarySection } from "./views/stops-section";
@@ -19,6 +20,10 @@ interface AppShellProps {
 
 export function AppShell(props: AppShellProps) {
   const { actions, isPlanning, state } = props;
+  const displayDestinations = deriveDisplayDestinations(
+    state.destinations,
+    state.itineraryOrder,
+  );
 
   return (
     <div
@@ -91,7 +96,7 @@ export function AppShell(props: AppShellProps) {
           </h2>
           <div id="dest-search-control" class="search-control" />
           <StopsAndItinerarySection
-            destinations={state.destinations}
+            destinations={displayDestinations}
             focusedDestinationId={state.focusedDestinationId}
             isPlanning={isPlanning}
             onRemove={actions.removeDestination}

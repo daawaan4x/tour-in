@@ -44,6 +44,7 @@ export function createTripActions(options: CreateTripActionsOptions): TripAction
       return {
         ...prev,
         start: place,
+        itineraryOrder: [],
         routeCoords: [],
         routeDistanceKm: null,
         routeStatus: deriveRouteStatusFromTrip(place, prev.destinations),
@@ -69,6 +70,7 @@ export function createTripActions(options: CreateTripActionsOptions): TripAction
       return {
         ...prev,
         destinations,
+        itineraryOrder: [],
         routeCoords: [],
         routeDistanceKm: null,
         routeStatus: deriveRouteStatusFromTrip(prev.start, destinations),
@@ -91,6 +93,7 @@ export function createTripActions(options: CreateTripActionsOptions): TripAction
         return {
           ...prev,
           start: null,
+          itineraryOrder: [],
           routeCoords: [],
           routeDistanceKm: null,
           routeStatus: "missing-start",
@@ -122,6 +125,7 @@ export function createTripActions(options: CreateTripActionsOptions): TripAction
         return {
           ...prev,
           destinations,
+          itineraryOrder: [],
           routeCoords: [],
           routeDistanceKm: null,
           routeStatus: deriveRouteStatusFromTrip(prev.start, destinations),
@@ -166,6 +170,7 @@ export function createTripActions(options: CreateTripActionsOptions): TripAction
           ...prev,
           start: null,
           destinations: [],
+          itineraryOrder: [],
           routeCoords: [],
           routeDistanceKm: null,
           routeStatus: "missing-start",

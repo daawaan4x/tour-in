@@ -116,3 +116,9 @@
   background: var(--color-accent-route);
   color: var(--color-text-inverse);
 }
+
+.tour-marker-spinner {
+  display: block;
+  border-color: rgb(47 36 29 / 28%);
+  border-top-color: var(--color-accent-route);
+}
