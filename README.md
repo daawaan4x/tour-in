@@ -2,6 +2,10 @@
 
 App for finding the shortest path to tour places around Ilocos Norte — made with Python.
 
+<div align="center">
+	<img height="320" src="assets/tourin-demo-480p-24fps-2x.gif"/>
+</div>
+
 ## Features
 
 - Select multiple Points of Interest (POIs) to visit
