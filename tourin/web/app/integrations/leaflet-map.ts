@@ -67,6 +67,7 @@ interface CreateLeafletMapAdapterOptions {
   mapElementId: string;
   onMapClick(lat: number, lon: number): void;
   onDestinationClick(destinationId: string): void;
+  traceStrackApiKey: string;
 }
 
 export function createLeafletMapAdapter(
@@ -75,10 +76,15 @@ export function createLeafletMapAdapter(
   configureLeafletDefaultIcons();
 
   const map = L.map(options.mapElementId).setView([18.194343, 120.6911117], 10);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap",
-  }).addTo(map);
+
+  //L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer(
+    `https://tile.tracestrack.com/_/{z}/{x}/{y}.webp?key=${options.traceStrackApiKey}`,
+    {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap",
+    },
+  ).addTo(map);
 
   map.on("click", (event: L.LeafletMouseEvent) => {
     options.onMapClick(event.latlng.lat, event.latlng.lng);

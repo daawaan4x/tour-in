@@ -69,6 +69,7 @@ renderer.render(store.getState());
 
 const mapAdapter = createLeafletMapAdapter({
   mapElementId: "map",
+  traceStrackApiKey: "1a57e187a51e83b51bd3c3104fe906d7",
   onMapClick: (lat, lon) => {
     tripActions.selectStartFromMap(createMapStartPlace(lat, lon));
   },
@@ -82,8 +83,9 @@ let destinationSearchControl: GeoapifyControl | null = null;
 const startSearchContainer = requireElementById<HTMLElement>(
   "start-search-control",
 );
-const destinationSearchContainer =
-  requireElementById<HTMLElement>("dest-search-control");
+const destinationSearchContainer = requireElementById<HTMLElement>(
+  "dest-search-control",
+);
 
 if (GEOAPIFY_API_KEY) {
   startSearchControl = createGeoapifyControl({
