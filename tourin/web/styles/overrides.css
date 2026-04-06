@@ -3,7 +3,6 @@
   min-height: 44px;
   padding: 0 var(--space-8);
   border: 1px solid rgb(47 36 29 / 20%);
-  border-radius: var(--radius-md);
   background: var(--color-bg-canvas);
   color: var(--color-text-primary);
   transition:
@@ -26,7 +25,6 @@
 .geoapify-autocomplete-items {
   margin-top: var(--space-4);
   border: 1px solid rgb(47 36 29 / 14%);
-  border-radius: var(--radius-md);
   background: var(--color-bg-card);
   box-shadow: var(--shadow-md);
 }

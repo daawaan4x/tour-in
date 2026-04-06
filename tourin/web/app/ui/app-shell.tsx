@@ -54,7 +54,7 @@ export function AppShell(props: AppShellProps) {
         </header>
 
         <section
-          class="grid gap-3 rounded-lg border border-[rgb(47_36_29/0.12)] bg-(--color-bg-card) p-4 shadow-(--shadow-sm)"
+          class="grid gap-3 border border-[rgb(47_36_29/0.12)] bg-(--color-bg-card) p-4 shadow-(--shadow-sm)"
           aria-labelledby="start-section-title"
         >
           <h2
@@ -85,7 +85,7 @@ export function AppShell(props: AppShellProps) {
         </section>
 
         <section
-          class="grid gap-3 rounded-lg border border-[rgb(47_36_29/0.12)] bg-(--color-bg-card) p-4 shadow-(--shadow-sm)"
+          class="grid gap-3 border border-[rgb(47_36_29/0.12)] bg-(--color-bg-card) p-4 shadow-(--shadow-sm)"
           aria-labelledby="stops-section-title"
         >
           <h2

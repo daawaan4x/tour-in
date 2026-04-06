@@ -28,9 +28,9 @@ export function MapSummaryOverlay(props: MapSummaryOverlayProps) {
       ? "--"
       : props.routeDistanceKm.toFixed(1) + " km";
   const iconButtonClass =
-    "inline-flex h-[30px] min-h-[30px] w-[30px] min-w-[30px] shrink-0 items-center justify-center rounded-full border border-[rgb(47_36_29_/_0.14)] bg-[var(--color-bg-card)] p-0 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-ease-standard)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-canvas)] disabled:opacity-[0.52]";
+    "inline-flex h-[30px] min-h-[30px] w-[30px] min-w-[30px] shrink-0 items-center justify-center border border-[rgb(47_36_29_/_0.14)] bg-[var(--color-bg-card)] p-0 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-ease-standard)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-canvas)] disabled:opacity-[0.52]";
   const retryButtonClass =
-    "inline-flex min-h-[38px] items-center justify-center rounded-[var(--radius-pill)] border border-transparent bg-[var(--color-brand-primary)] px-3 text-[var(--font-size-small)] font-semibold text-[var(--color-text-inverse)] transition-colors duration-[var(--motion-fast)] ease-[var(--motion-ease-standard)] hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-[0.52]";
+    "inline-flex min-h-[38px] items-center justify-center border border-transparent bg-[var(--color-brand-primary)] px-3 text-[var(--font-size-small)] font-semibold text-[var(--color-text-inverse)] transition-colors duration-[var(--motion-fast)] ease-[var(--motion-ease-standard)] hover:bg-[var(--color-brand-primary-hover)] disabled:opacity-[0.52]";
   const tone = statusTone(props.status);
   const toneClass =
     tone === "planning"
@@ -46,7 +46,7 @@ export function MapSummaryOverlay(props: MapSummaryOverlayProps) {
     >
       <div
         class={
-          "inline-flex w-fit max-w-none items-center gap-3 rounded-md border p-3 shadow-(--shadow-md) " +
+          "inline-flex w-fit max-w-none items-center gap-3 border p-3 shadow-(--shadow-md) " +
           toneClass
         }
       >
