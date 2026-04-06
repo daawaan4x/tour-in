@@ -9,6 +9,7 @@ const ILOCOS_NORTE_FILTER =
 
 export interface GeoapifyControl {
   setDisabled(disabled: boolean): void;
+  clear(): void;
   destroy(): void;
 }
 
@@ -88,6 +89,7 @@ export function createGeoapifyControl(
       input.disabled = disabled;
       input.setAttribute("aria-disabled", String(disabled));
     },
+    clear: clearInput,
     destroy: () => {
       options.container.replaceChildren();
     },

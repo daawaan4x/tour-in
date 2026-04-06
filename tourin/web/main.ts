@@ -122,7 +122,11 @@ function syncSearchControlState(state: AppState): void {
 
 syncSearchControlState(store.getState());
 
-const unsubscribeUi = store.subscribe((state) => {
+const unsubscribeUi = store.subscribe((state, prevState) => {
+  if (prevState.start && !state.start) {
+    startSearchControl?.clear();
+  }
+
   renderer.render(state);
   syncSearchControlState(state);
 });

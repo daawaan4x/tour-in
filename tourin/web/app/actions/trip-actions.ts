@@ -13,7 +13,8 @@ function isDuplicateDestination(
   const candidateKey = destinationKey(candidate);
   return destinations.some(
     (destination) =>
-      destination.id === candidate.id || destinationKey(destination) === candidateKey,
+      destination.id === candidate.id ||
+      destinationKey(destination) === candidateKey,
   );
 }
 
@@ -32,7 +33,9 @@ interface CreateTripActionsOptions {
   store: Store;
 }
 
-export function createTripActions(options: CreateTripActionsOptions): TripActions {
+export function createTripActions(
+  options: CreateTripActionsOptions,
+): TripActions {
   const { store } = options;
 
   const applyStartSelection = (place: PlaceRef): void => {
