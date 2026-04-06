@@ -87,14 +87,8 @@ export function AppShell(props: AppShellProps) {
             id="stops-section-title"
             class="[font-family:var(--font-display)] text-(--font-size-h2) font-semibold"
           >
-            Add stops
+            Add destinations
           </h2>
-          <label
-            class="block text-(--font-size-small) font-semibold"
-            for="dest-search-input"
-          >
-            Search destinations
-          </label>
           <div id="dest-search-control" class="search-control" />
           <StopsAndItinerarySection
             destinations={state.destinations}
