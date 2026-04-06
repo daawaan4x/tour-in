@@ -3,7 +3,9 @@
 App for finding the shortest path to tour places around Ilocos Norte — made with Python.
 
 <div align="center">
+<kbd>
 	<img height="320" src="assets/tourin-demo-480p-24fps-2x.gif"/>
+</kbd>
 </div>
 
 ## Features
