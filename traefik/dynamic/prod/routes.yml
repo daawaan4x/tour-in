@@ -1,14 +1,14 @@
 http:
   routers:
     tourin-api:
-      rule: "Host(`api.example.com`)"
+      rule: "Host(`api-tourin.theoneeclarin.com`)"
       entryPoints:
         - web
       service: tourin-api-svc
       priority: 1
 
     tourin-api-limited:
-      rule: "Host(`api.example.com`) && Path(`/api/route`)"
+      rule: "Host(`api-tourin.theoneeclarin.com`) && Path(`/api/route`)"
       entryPoints:
         - web
       service: tourin-api-svc
