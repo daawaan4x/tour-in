@@ -85,40 +85,12 @@
 }
 
 .tour-marker {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid rgb(47 36 29 / 24%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-small);
-  font-weight: 600;
-  box-shadow: var(--shadow-sm);
-}
-
-.tour-marker--start {
-  width: 36px;
-  height: 36px;
-  border-color: rgb(47 36 29 / 25%);
-  background: var(--color-brand-primary);
-  color: var(--color-text-inverse);
-}
-
-.tour-marker--destination {
-  background: var(--color-bg-card);
-  color: var(--color-text-primary);
-}
-
-.tour-marker--active {
-  border-color: var(--color-accent-route);
-  background: var(--color-accent-route);
-  color: var(--color-text-inverse);
-}
-
-.tour-marker-spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  position: relative;
   display: block;
-  border-color: rgb(47 36 29 / 28%);
-  border-top-color: var(--color-accent-route);
+  pointer-events: auto;
 }

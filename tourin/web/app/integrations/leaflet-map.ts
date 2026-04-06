@@ -5,6 +5,7 @@ import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
 
 import { deriveDisplayDestinations } from "../state/selectors";
 import type { AppState, PlaceRef } from "../state/types";
+import { renderMarkerHtml } from "../ui/marker";
 
 let didConfigureDefaultIcon = false;
 
@@ -41,30 +42,17 @@ function createPopupContent(place: PlaceRef): HTMLElement {
   return wrapper;
 }
 
-function createMarkerIcon(
-  markerContent: string,
-  variant: "start" | "destination",
-  isActive: boolean,
-): L.DivIcon {
-  const classNames = ["tour-marker", `tour-marker--${variant}`];
-  if (isActive) {
-    classNames.push("tour-marker--active");
-  }
-
-  return L.divIcon({
-    className: classNames.join(" "),
-    html: markerContent,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-  });
+interface CreateMarkerIconOptions {
+  html: string;
 }
 
-function markerContent(index: number, isPlanning: boolean): string {
-  if (!isPlanning) {
-    return String(index + 1);
-  }
-
-  return '<span class="route-pending-spinner route-pending-spinner--compact tour-marker-spinner" aria-hidden="true"></span><span class="sr-only">Updating stop order</span>';
+function createMarkerIcon({ html }: CreateMarkerIconOptions): L.DivIcon {
+  return L.divIcon({
+    className: "tour-marker",
+    html,
+    iconSize: [40, 40],
+    iconAnchor: [20, 39],
+  });
 }
 
 export interface LeafletMapAdapter {
@@ -116,11 +104,15 @@ export function createLeafletMapAdapter(
 
     destinations.forEach((destination, index) => {
       const marker = L.marker([destination.lat, destination.lon], {
-        icon: createMarkerIcon(
-          markerContent(index, isPlanning),
-          "destination",
-          destination.id === focusedDestinationId,
-        ),
+        icon: createMarkerIcon({
+          html: renderMarkerHtml({
+            variant: "destination",
+            isActive: destination.id === focusedDestinationId,
+            index,
+            isPlanning,
+            destinationId: destination.id,
+          }),
+        }),
       });
       marker.bindPopup(createPopupContent(destination));
       marker.on("click", () => {
@@ -139,7 +131,12 @@ export function createLeafletMapAdapter(
         const nextLatLng: [number, number] = [state.start.lat, state.start.lon];
         if (!startMarker) {
           startMarker = L.marker(nextLatLng, {
-            icon: createMarkerIcon("S", "start", false),
+            icon: createMarkerIcon({
+              html: renderMarkerHtml({
+                variant: "start",
+                isActive: false,
+              }),
+            }),
           }).addTo(map);
         } else {
           startMarker.setLatLng(nextLatLng);
