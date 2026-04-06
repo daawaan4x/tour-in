@@ -1,140 +1,166 @@
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import markerIcon2xUrl from "leaflet/dist/images/marker-icon-2x.png";
-import markerIconUrl from "leaflet/dist/images/marker-icon.png";
-import markerShadowUrl from "leaflet/dist/images/marker-shadow.png";
 
-const API_URL = (
-  import.meta.env.VITE_API_URL ?? "http://localhost:5000"
-).replace(/\/+$/, "");
+import { createRouteActions } from "./app/actions/route-actions";
+import { createTripActions } from "./app/actions/trip-actions";
+import {
+  createGeoapifyControl,
+  type GeoapifyControl,
+} from "./app/integrations/geoapify";
+import { createLeafletMapAdapter } from "./app/integrations/leaflet-map";
+import { createMapStartPlace } from "./app/services/places";
+import { createRouteApiClient } from "./app/services/route-api";
+import { createStore } from "./app/state/store";
+import type { AppState } from "./app/state/types";
+import { createAppRenderer } from "./app/ui/render-app";
+import "./styles/tokens.css";
+import "./styles/tailwind.css";
+import "./styles/base.css";
+import "./styles/overrides.css";
+
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+const TRACESTRACK_API_KEY = import.meta.env.VITE_TRACESTRACK_API_KEY;
 const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
-if (!GEOAPIFY_API_KEY) {
-  throw new Error("Missing VITE_GEOAPIFY_API_KEY environment variable.");
+
+function requireElementById<T extends HTMLElement>(id: string): T {
+  const node = document.getElementById(id);
+  if (!node) {
+    throw new Error(`Missing required DOM element: #${id}`);
+  }
+
+  return node as T;
 }
 
-// Leaflet's CSS-based icon path detection can fail when assets are inlined in Vite builds.
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2xUrl,
-  iconUrl: markerIconUrl,
-  shadowUrl: markerShadowUrl,
+const initialState: AppState = {
+  start: null,
+  destinations: [],
+  itineraryOrder: [],
+  routeCoords: [],
+  routeDistanceKm: null,
+  routeStatus: GEOAPIFY_API_KEY ? "missing-start" : "error",
+  routeError: GEOAPIFY_API_KEY
+    ? null
+    : "Missing Geoapify API key. Search is disabled until VITE_GEOAPIFY_API_KEY is set.",
+  isBootstrapping: false,
+  isConfigMissing: !GEOAPIFY_API_KEY,
+  focusedDestinationId: null,
+};
+
+const store = createStore(initialState);
+const tripActions = createTripActions({ store });
+const routeActions = createRouteActions({
+  store,
+  routeApiClient: createRouteApiClient({ apiUrl: API_URL }),
 });
 
-// MAP SETUP
-const map = L.map("map").setView([18.194343, 120.6911117], 10);
-
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "&copy; OpenStreetMap",
-}).addTo(map);
-
-// AUTOCOMPLETE FOR DESTINATIONS
-import { GeocoderAutocomplete } from "@geoapify/geocoder-autocomplete";
-import "@geoapify/geocoder-autocomplete/styles/minimal.css";
-
-const destAuto = new GeocoderAutocomplete(
-  document.getElementById("autocomplete-dest")!,
-  GEOAPIFY_API_KEY,
-  {
-    placeholder: "Add destination",
-    lang: "en",
-    limit: 5,
-    filter: {
-      place:
-        "51b65426295a295e405923591868d23d3240f00101f901e8f516000000000092030c496c6f636f73204e6f727465",
-    },
+const renderer = createAppRenderer({
+  mounts: {
+    root: requireElementById("app"),
   },
+  actions: {
+    clearStart: tripActions.clearStart,
+    removeDestination: tripActions.removeDestination,
+    focusDestination: tripActions.focusDestination,
+    retryRoute: () => {
+      void routeActions.retryRoute();
+    },
+    clearTrip: tripActions.clearTrip,
+  },
+});
+
+renderer.render(store.getState());
+
+const mapAdapter = createLeafletMapAdapter({
+  mapElementId: "map",
+  traceStrackApiKey: TRACESTRACK_API_KEY,
+  onMapClick: (lat, lon) => {
+    tripActions.selectStartFromMap(createMapStartPlace(lat, lon));
+  },
+  onDestinationClick: (destinationId) => {
+    tripActions.focusDestination(destinationId);
+  },
+});
+
+let startSearchControl: GeoapifyControl | null = null;
+let destinationSearchControl: GeoapifyControl | null = null;
+const startSearchContainer = requireElementById<HTMLElement>(
+  "start-search-control",
+);
+const destinationSearchContainer = requireElementById<HTMLElement>(
+  "dest-search-control",
 );
 
-// DATA STORAGE
-let startCoords: any = null;
-let destinations: any[] = [];
-
-let startMarker: L.Marker | null = null;
-let routeLine: L.Polyline | null = null;
-let destMarkers: L.Marker[] = [];
-
-// ======= CLICK MAP TO SET START LOCATION =======
-map.on("click", (e: any) => {
-  startCoords = {
-    lat: e.latlng.lat,
-    lon: e.latlng.lng,
-  };
-
-  if (startMarker) map.removeLayer(startMarker);
-
-  startMarker = L.marker([startCoords.lat, startCoords.lon]).addTo(map);
-
-  planRoute();
-});
-
-// ======= DESTINATION AUTO-ADD AND LIST WITH REMOVE BUTTON =======
-destAuto.on("select", (loc: any) => {
-  const lat = loc.properties.lat;
-  const lon = loc.properties.lon;
-
-  const dest = {
-    lat,
-    lon,
-    name: loc.properties.formatted,
-  };
-
-  destinations.push(dest);
-
-  // Marker
-  const marker = L.marker([dest.lat, dest.lon])
-    .addTo(map)
-    .bindPopup(dest.name)
-    .openPopup();
-
-  destMarkers.push(marker);
-
-  // Update list with remove button
-  const list = document.getElementById("destination-list")!;
-  const li = document.createElement("li");
-  li.textContent = dest.name;
-
-  const removeBtn = document.createElement("button");
-  removeBtn.textContent = "Remove";
-  removeBtn.style.marginLeft = "8px";
-  removeBtn.onclick = () => {
-    map.removeLayer(marker); // remove marker
-    destinations = destinations.filter((d) => d !== dest); // remove from array
-    li.remove(); // remove from list
-    planRoute(); // redraw route after removal
-  };
-
-  li.appendChild(removeBtn);
-  list.appendChild(li);
-
-  planRoute();
-});
-
-// ======= DRAW ROUTE =======
-function drawRoute(coords: number[][]) {
-  const points = coords.map((c) => L.latLng(c[1], c[0])); // lat, lon
-  if (routeLine) map.removeLayer(routeLine);
-  routeLine = L.polyline(points, { weight: 5 }).addTo(map);
-  map.fitBounds(routeLine.getBounds());
-}
-
-// ======= SEND DATA TO FLASK =======
-async function planRoute() {
-  if (!startCoords) return drawRoute([]);
-  if (destinations.length === 0) return drawRoute([]);
-
-  const response = await fetch(`${API_URL}/api/route`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      start: startCoords,
-      destinations: destinations,
-    }),
+if (GEOAPIFY_API_KEY) {
+  startSearchControl = createGeoapifyControl({
+    container: startSearchContainer,
+    apiKey: GEOAPIFY_API_KEY,
+    placeholder: "Search starting point or click on the map",
+    source: "search",
+    inputId: "start-search-input",
+    clearOnSelect: false,
+    onSelect: (place) => {
+      tripActions.selectStartFromSearch(place);
+    },
   });
 
-  const data = await response.json();
-  drawRoute(data.route);
+  destinationSearchControl = createGeoapifyControl({
+    container: destinationSearchContainer,
+    apiKey: GEOAPIFY_API_KEY,
+    placeholder: "Search destination to add",
+    source: "search",
+    inputId: "dest-search-input",
+    clearOnSelect: true,
+    onSelect: (place) => tripActions.addDestinationFromSearch(place),
+  });
 }
 
-// EXPOSE FUNCTION TO HTML
-(window as any).planRoute = planRoute;
+function syncSearchControlState(state: AppState): void {
+  const isPlanning = state.routeStatus === "planning";
+  const disabled = isPlanning || state.isConfigMissing;
+  startSearchControl?.setDisabled(disabled);
+  destinationSearchControl?.setDisabled(disabled);
+}
+
+syncSearchControlState(store.getState());
+
+const unsubscribeUi = store.subscribe((state) => {
+  renderer.render(state);
+  syncSearchControlState(state);
+});
+
+const unsubscribeMap = store.subscribe((state) => {
+  mapAdapter.sync(state);
+});
+
+const unsubscribeAutoRoutePlan = store.subscribe((state, prevState) => {
+  if (state.routeStatus === "planning") {
+    return;
+  }
+
+  const startChanged = state.start?.id !== prevState.start?.id;
+  const destinationsChanged =
+    state.destinations.length !== prevState.destinations.length ||
+    state.destinations.some(
+      (destination, index) =>
+        destination.id !== prevState.destinations[index]?.id,
+    );
+  if (!startChanged && !destinationsChanged) {
+    return;
+  }
+
+  if (!state.start || state.destinations.length === 0) {
+    return;
+  }
+
+  void routeActions.planRoute();
+});
+
+mapAdapter.sync(store.getState());
+
+window.addEventListener("beforeunload", () => {
+  unsubscribeUi();
+  unsubscribeMap();
+  unsubscribeAutoRoutePlan();
+  mapAdapter.destroy();
+  startSearchControl?.destroy();
+  destinationSearchControl?.destroy();
+});

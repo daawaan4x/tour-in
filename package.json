@@ -9,13 +9,19 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@preact/preset-vite": "^2.10.2",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^25.5.2",
+    "tailwindcss": "^4.2.2",
     "typescript": "~5.9.3",
     "vite": "^7.2.4"
   },
   "dependencies": {
     "@geoapify/geocoder-autocomplete": "^3.0.1",
-    "@types/leaflet": "^1.9.21",
-    "leaflet": "^1.9.4"
+    "@turf/turf": "^7.3.4",
+    "leaflet": "^1.9.4",
+    "preact": "^10.29.1",
+    "preact-render-to-string": "^6.6.7"
   }
 }

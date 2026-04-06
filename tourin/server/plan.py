@@ -36,5 +36,5 @@ def plan(
     start_node = snapped_nodes[0].node_id
     target_nodes = [node.node_id for node in snapped_nodes[1:]]
 
-    node_path = ucs_plan(graph, start_node, target_nodes)
-    return stitch_path(graph, node_path)
+    plan_result = ucs_plan(graph, start_node, target_nodes)
+    return stitch_path(graph, plan_result.node_path)
