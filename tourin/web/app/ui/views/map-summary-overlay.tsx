@@ -24,7 +24,9 @@ function statusTone(status: RouteStatus): "neutral" | "planning" | "error" {
 
 export function MapSummaryOverlay(props: MapSummaryOverlayProps) {
   const routeDistanceLabel =
-    props.routeDistanceKm === null ? "--" : props.routeDistanceKm.toFixed(1) + " km";
+    props.routeDistanceKm === null
+      ? "--"
+      : props.routeDistanceKm.toFixed(1) + " km";
   const iconButtonClass =
     "inline-flex h-[30px] min-h-[30px] w-[30px] min-w-[30px] shrink-0 items-center justify-center rounded-full border border-[rgb(47_36_29_/_0.14)] bg-[var(--color-bg-card)] p-0 transition-colors duration-[var(--motion-fast)] ease-[var(--motion-ease-standard)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-canvas)] disabled:opacity-[0.52]";
   const retryButtonClass =
@@ -40,46 +42,47 @@ export function MapSummaryOverlay(props: MapSummaryOverlayProps) {
   return (
     <div
       id="map-summary-overlay"
-      class="pointer-events-auto absolute right-4 top-4 z-[600]"
+      class="pointer-events-auto absolute right-4 top-4 z-600"
     >
       <div
         class={
-          "inline-grid w-max min-w-[170px] max-w-none gap-1 rounded-[var(--radius-md)] border p-3 shadow-[var(--shadow-md)] " +
+          "inline-flex w-fit max-w-none items-center gap-3 rounded-md border p-3 shadow-(--shadow-md) " +
           toneClass
         }
       >
-        <div class="flex items-center gap-3 whitespace-nowrap">
-          <span class="whitespace-nowrap text-[var(--font-size-small)] text-[var(--color-text-secondary)]">
-            Route
-          </span>
-          <span class="whitespace-nowrap [font-family:var(--font-mono)] text-[var(--font-size-small)] font-medium">
-            {routeDistanceLabel}
-          </span>
-          <button
-            class={iconButtonClass}
-            type="button"
-            title="Clear trip"
-            aria-label="Clear trip"
-            disabled={!props.canClear || props.isPlanning}
-            onClick={props.onClearTrip}
-          >
-            <i class="bi bi-trash3 block text-[0.9rem] leading-none" aria-hidden="true" />
-            <span class="sr-only">Clear trip</span>
-          </button>
-        </div>
-
-        {props.status === "planning" && (
-          <div class="flex items-center">
+        <span class="whitespace-nowrap text-(--color-text-secondary)">
+          Route
+        </span>
+        {props.status === "planning" ? (
+          <>
             <span class="route-pending-spinner" aria-hidden="true" />
             <span class="sr-only">Updating route</span>
-          </div>
+          </>
+        ) : (
+          <span class="whitespace-nowrap font-mono text-(--font-size-small) font-medium">
+            {routeDistanceLabel}
+          </span>
         )}
+        <button
+          class={iconButtonClass}
+          type="button"
+          title="Clear trip"
+          aria-label="Clear trip"
+          disabled={!props.canClear || props.isPlanning}
+          onClick={props.onClearTrip}
+        >
+          <i
+            class="bi bi-trash3 block text-[0.9rem] leading-none"
+            aria-hidden="true"
+          />
+          <span class="sr-only">Clear trip</span>
+        </button>
 
         {props.status === "error" && (
           <>
-            <p class="whitespace-nowrap text-[var(--font-size-small)] text-[var(--color-text-secondary)]">
+            <span class="whitespace-nowrap text-(--font-size-small)">
               {props.errorMessage ?? "Route unavailable."}
-            </p>
+            </span>
             <button
               class={retryButtonClass}
               type="button"
